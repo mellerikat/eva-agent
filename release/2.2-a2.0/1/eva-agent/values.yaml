@@ -1,7 +1,7 @@
 image:
   tag: "2.2-a2.0"
 
-replicaCount: 2
+replicaCount: 1
 
 env:
   # base
