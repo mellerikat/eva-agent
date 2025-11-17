@@ -1,0 +1,48 @@
+servingEngineSpec:
+  runtimeClassName: ""
+  modelSpec:
+  - name: "qwen2-5-vl-7b-awq"
+    modelURL: "Qwen/Qwen2.5-VL-7B-Instruct-AWQ"
+  # - name: "qwen2-5-vl-3b-awq"
+  #   modelURL: "Qwen/Qwen2.5-VL-3B-Instruct-AWQ"
+    repository: "vllm/vllm-openai"
+    tag: "v0.11.0"
+
+    serviceAccountName: sa-eva-agent
+
+    replicaCount: 1
+
+    requestCPU: 4
+    requestMemory: "16Gi"
+    requestGPU: 1
+
+    pvcStorage: "30Gi"
+    storageClass: "eva-agent-sc-fs"
+    pvcAccessMode:
+      - "ReadWriteMany"
+
+    # Custom arguments for vllm serve
+    # https://artifacthub.io/packages/helm/vllm-production-stack/vllm-stack?modal=template&template=deployment-vllm-multi.yaml
+    vllmConfig:
+      host: "0.0.0.0"
+      # port: 9149 # use default 8000
+      tensorParallelSize: 1
+      gpuMemoryUtilization: 0.88
+      maxModelLen: 2048
+      extraArgs:
+        - "--served-model-name"
+        # - "qwen2.5-vl-32b-awq"
+        - "qwen2.5-vl-7b-awq"
+
+      # for 2080ti / Qwen/Qwen2.5-VL-7B-Instruct-AWQ
+      v0: 1  # VLLM_USE_V1=0 for legacy nvidia gpu
+      enableChunkedPrefill: true
+      maxNumSeqs: 8
+      dtype: auto
+
+    nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/os
+          operator: In
+          values:
+            - linux
