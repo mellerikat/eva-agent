@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eva-agent-vllm-nodeport
+  namespace: eva-agent
+spec:
+  type: NodePort
+  selector:
+    helm-release-name: eva-agent-vllm
+    model: qwen3-vl-8b-fp8
+  ports:
+    - name: http
+      port: 80 # servicePort (same as existing svc)
+      targetPort: container-port # named port in the pod (maps to 8000)
+      nodePort: 32041 # external NodePort

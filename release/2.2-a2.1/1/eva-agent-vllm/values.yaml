@@ -1,0 +1,6 @@
+routerSpec:
+  enableRouter: false
+
+servingEngineSpec:
+  runtimeClassName: ""
+  modelSpec: []
