@@ -1,0 +1,20 @@
+# Values for Naver Cloud Platform eva-agent-init chart
+
+storageClass:
+
+  blockStorage:
+    provisioner: disk.csi.nks.naverncp.com
+    parameters:
+      type: SSD
+      fsType: ext4
+
+  fileSystem:
+    provisioner: nas.csi.ncloud.com
+    parameters:
+      region: KR
+      zone: KR-1
+      volumeName: my-nas-volume
+      volumeSize: "100"  # 단위: GB
+      volumeAllotmentProtocolType: NFS
+      isEncryptedVolume: "false"
+      isReturnProtection: "false"

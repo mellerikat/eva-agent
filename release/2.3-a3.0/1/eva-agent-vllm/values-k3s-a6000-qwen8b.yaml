@@ -1,0 +1,46 @@
+servingEngineSpec:
+  runtimeClassName: ""
+  modelSpec:
+  - name: "qwen3-vl-8b-fp8"
+    modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
+    repository: "vllm/vllm-openai"
+    tag: "v0.11.0"
+
+    serviceAccountName: sa-eva-agent
+
+    replicaCount: 1
+
+    requestCPU: 4
+    requestMemory: "32Gi"
+    requestGPU: 1
+
+    pvcStorage: "30Gi"
+    storageClass: "eva-agent-sc-fs"
+    pvcAccessMode:
+      - "ReadWriteMany"
+
+    # Custom arguments for vllm serve
+    # https://artifacthub.io/packages/helm/vllm-production-stack/vllm-stack?modal=template&template=deployment-vllm-multi.yaml
+    vllmConfig:
+      host: "0.0.0.0"
+      # port: 9149 # use default 8000
+      tensorParallelSize: 1
+      gpuMemoryUtilization: 0.7
+      enableChunkedPrefill: true
+      enablePrefixCaching: true
+      maxModelLen: 12288
+      dtype: "auto"
+      extraArgs:
+        - "--served-model-name"
+        - "qwen3-vl-8b-instruct-fp8"
+        - "--kv-cache-dtype"
+        - "auto"
+        - "--max-num-batched-tokens"
+        - "4096"
+
+    nodeSelectorTerms:
+      - matchExpressions:
+         - key: kubernetes.io/os
+           operator: In
+           values:
+             - linux
