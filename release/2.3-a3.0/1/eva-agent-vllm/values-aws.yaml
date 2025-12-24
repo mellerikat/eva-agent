@@ -36,7 +36,7 @@ servingEngineSpec:
         dtype: "auto"
         extraArgs:
           - "--served-model-name"
-          - "qwen3-vl-8b-fp8"
+          - "qwen3-vl-8b-instruct-fp8"
           - "--kv-cache-dtype"
           - "fp8"
           - "--max-num-batched-tokens"
