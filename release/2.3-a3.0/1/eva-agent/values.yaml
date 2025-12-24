@@ -1,0 +1,53 @@
+image:
+  tag: "2.2-a2.1"
+
+replicaCount: 1
+
+env:
+  # base
+  - name: MODEL_CATALOG_FILE
+    value: config/model_catalog.json
+
+  # vllm
+  - name: VLLM_BASE_URL
+    # value: http://eva-agent-vllm-router-service/v1  # If routerSpec.enableRouter is true in eva-agent-vllm
+    value: http://eva-agent-vllm-qwen3-vl-8b-fp8-engine-service/v1
+  # VLLM_API_KEY=
+
+  # qdrant
+  - name: QDRANT_HOST
+    value: http://eva-agent-qdrant
+  - name: QDRANT_PORT
+    value: "6333"
+
+  # o11y
+  # secrets: LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, OTEL_EXPORTER_OTLP_HEADERS
+  # - name: LANGFUSE_HOST
+  #   value: http://langfuse.lge.com
+  # - name: LANGFUSE_S3_MEDIA_UPLOAD_ENABLED
+  #   value: "true"
+  # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+  #   value: http://langfuse.lge.com/api/public/otel
+
+  # Azure OpenAI
+  # secrets: OPENAI_API_KEY, AZURE_OPENAI_API_KEY, AZURE_CLIENT_SECRET
+  - name: OPENAI_API_TYPE
+    value: azure
+  - name: OPENAI_API_VERSION
+    value: 2025-04-01-preview
+  - name: AZURE_OPENAI_ENDPOINT
+    value: https://dev.dxengws.apim.lgedx.biz/shared-10000
+  - name: DEPLOYMENT_NAME
+    value: gpt-5-chat-2025-08-07
+  - name: AZURE_MANAGEMENT_BASE_URL
+    value: https://management.azure.com
+  # AZURE_OPENAI_SUBSCRIPTION_ID=
+  # AZURE_OPENAI_RESOURCE_GROUP_NAME=
+  # AZURE_OPENAI_ACCOUNT_NAME=
+  # AZURE_CLIENT_ID=
+  # AZURE_TENANT_ID=
+
+  # Clova
+  # secrets: CLOVA_API_KEY
+
+nodeSelector: {}
