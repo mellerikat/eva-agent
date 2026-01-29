@@ -16,7 +16,7 @@ routerSpec:
 
   # router는 외부에서 접근 가능하게 한다 (72서버는 개발 테스트용임)
   serviceType: LoadBalancer
-  servicePort: 32041
+  servicePort: 80
   containerPort: 8000
 
   resources:
@@ -26,8 +26,10 @@ routerSpec:
     limits:
       memory: 6Gi
 
+  nodeSelectorTerms: []
+
 servingEngineSpec:
-  runtimeClassName: ""
+  runtimeClassName: "nvidia"
   modelSpec:
     - name: "qwen3-vl-8b-fp8"
       modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
@@ -46,6 +48,8 @@ servingEngineSpec:
       storageClass: "eva-agent-sc-fs"
       pvcAccessMode:
         - "ReadWriteMany"
+
+      nodeSelectorTerms: []
 
       # vLLM settings (shared defaults)
       vllmConfig:

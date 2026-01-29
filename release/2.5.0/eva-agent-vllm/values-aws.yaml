@@ -7,7 +7,7 @@ routerSpec:
             - ng-an2-eva-agent
 
 servingEngineSpec:
-  runtimeClassName: ""
+  runtimeClassName: "nvidia"
   modelSpec:
     - name: "qwen3-vl-8b-fp8"
       modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
@@ -48,4 +48,3 @@ servingEngineSpec:
           operator: In
           values:
             - ng-an2-eva-agent-gpu
-

@@ -15,3 +15,5 @@ persistence:
   storageVolumeName: eva-agent-qdrant-storage
   # storageSubPath: ""
   storageClassName: eva-agent-sc-bs
+
+nodeSelector: {}

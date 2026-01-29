@@ -14,13 +14,15 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  ./install_eva_agent_simple.sh [options]
+  ./install_eva_agent.sh [options]
 
 Options:
   --chart <chart>             Helm chart reference (default: eva-agent/eva-agent)
   --chart-version <ver>       Helm chart version (latest if omitted)
   --image <tag>               Image tag (defaults to values.yaml image.tag)
   --namespace <ns>            Namespace (default: eva-agent)
+  --context <ctx>             Kube context (default: current context)
+  --base-dir <dir>            Base directory with eva-agent values (default: pwd)
   --ecr-host <host>           ECR host (default: 339713051385.dkr.ecr.ap-northeast-2.amazonaws.com)
   --ecr-repo <repo>           ECR repo name (default: mellerikat/release/eva-agent)
   --profile <aws-profile>     AWS profile (default: default)
@@ -29,9 +31,15 @@ Options:
   -f, --values <file>         Extra values file (repeatable)
   -h, --help                  Show help
 
+Expected layout under base-dir:
+  ./eva-agent/values.yaml
+  ./eva-agent/values-secret.yaml
+  ./eva-agent/values-k3s.yaml (optional)
+  ./eva-agent/values-aws.yaml (optional)
+
 Examples:
-  ./install_eva_agent_simple.sh --image 2.4.0b1
-  ./install_eva_agent_simple.sh --chart eva-agent/eva-agent --chart-version 2.1.2
+  ./install_eva_agent.sh --image 2.4.0b1
+  ./install_eva_agent.sh --chart eva-agent/eva-agent --chart-version 2.1.2
 USAGE
 }
 
@@ -45,6 +53,8 @@ CHART_VERSION="${CHART_VERSION:-}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 CHECK_DIGEST="${CHECK_DIGEST:-1}"
 DOCKER_CONFIG="${DOCKER_CONFIG:-/tmp/docker}"
+BASE_DIR="${BASE_DIR:-$(pwd)}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-}"
 EXTRA_VALUES=()
 
 # Parse CLI args (extra values are collected in an array).
@@ -54,6 +64,8 @@ while [ "${1:-}" != "" ]; do
     --chart-version) CHART_VERSION="$2"; shift 2 ;;
     --image) IMAGE_TAG="$2"; shift 2 ;;
     --namespace) NS="$2"; shift 2 ;;
+    --context) KUBE_CONTEXT="$2"; shift 2 ;;
+    --base-dir) BASE_DIR="$2"; shift 2 ;;
     --ecr-host) AWS_ECR_HOST="$2"; shift 2 ;;
     --ecr-repo) ECR_REPO_NAME="$2"; shift 2 ;;
     --profile) AWS_PROFILE="$2"; shift 2 ;;
@@ -68,6 +80,7 @@ done
 echo "[INFO] Namespace: ${NS}"
 echo "[INFO] ECR Host: ${AWS_ECR_HOST}"
 echo "[INFO] Chart: ${CHART}"
+echo "[INFO] Base Dir: ${BASE_DIR}"
 
 # If not provided, default to the "default" AWS profile.
 if [ -z "$AWS_PROFILE" ]; then
@@ -75,13 +88,23 @@ if [ -z "$AWS_PROFILE" ]; then
 fi
 echo "[INFO] AWS Profile: ${AWS_PROFILE}"
 
+VALUES_DIR="${BASE_DIR}/eva-agent"
+
+HELM_CONTEXT_ARGS=()
+KUBECTL_CONTEXT_ARGS=()
+if [ -n "$KUBE_CONTEXT" ]; then
+  HELM_CONTEXT_ARGS=(--kube-context "$KUBE_CONTEXT")
+  KUBECTL_CONTEXT_ARGS=(--context "$KUBE_CONTEXT")
+  echo "[INFO] Kube Context: ${KUBE_CONTEXT}"
+fi
+
 # Resolve IMAGE_TAG from values.yaml when not provided.
-if [ -z "$IMAGE_TAG" ] && [ -f values.yaml ]; then
+if [ -z "$IMAGE_TAG" ] && [ -f "${VALUES_DIR}/values.yaml" ]; then
   IMAGE_TAG="$(awk '
     $1 == "image:" {in_image=1; next}
     in_image && $1 == "tag:" {gsub(/"/, "", $2); print $2; exit}
     in_image && $1 ~ /^[A-Za-z_]/ {in_image=0}
-  ' values.yaml)"
+  ' "${VALUES_DIR}/values.yaml")"
 fi
 
 if [ -n "$IMAGE_TAG" ]; then
@@ -102,7 +125,7 @@ fi
 echo "[INFO] Chart Version: ${CHART_VERSION}"
 
 # Detect the currently deployed image tag to handle same-tag rollouts.
-prev_image="$(kubectl -n "$NS" get deploy eva-agent \
+prev_image="$(kubectl "${KUBECTL_CONTEXT_ARGS[@]}" -n "$NS" get deploy eva-agent \
   -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
 prev_tag=""
 if [ -n "$prev_image" ] && [ "${prev_image#*@}" = "$prev_image" ]; then
@@ -130,7 +153,7 @@ EOF
 
 # Include default values only if files exist; append user values after.
 default_values_args=()
-for values_path in values.yaml values-k3s.yaml values-secret.yaml; do
+for values_path in "${VALUES_DIR}/values.yaml" "${VALUES_DIR}/values-secret.yaml"; do
   if [ -f "$values_path" ]; then
     default_values_args+=(-f "$values_path")
   else
@@ -144,6 +167,7 @@ done
 
 echo "[INFO] Running helm upgrade..."
 helm upgrade --install eva-agent "$CHART" --version="$CHART_VERSION" -n "$NS" \
+  "${HELM_CONTEXT_ARGS[@]}" \
   "${default_values_args[@]}" \
   -f "$values_file" \
   "${extra_values_args[@]}" \
@@ -161,19 +185,19 @@ if [ -n "$IMAGE_TAG" ] && [ -n "$prev_tag" ] && [ "$prev_tag" = "$IMAGE_TAG" ]; 
       desired_digest=""
     fi
 
-    current_image_id="$(kubectl -n "$NS" get pod -l app.kubernetes.io/name=eva-agent \
+    current_image_id="$(kubectl "${KUBECTL_CONTEXT_ARGS[@]}" -n "$NS" get pod -l app.kubernetes.io/name=eva-agent \
       -o jsonpath='{.items[0].status.containerStatuses[0].imageID}' 2>/dev/null || true)"
     current_digest="${current_image_id##*@}"
 
     if [ -n "$desired_digest" ] && [ -n "$current_digest" ] && [ "$current_digest" != "$desired_digest" ]; then
       echo "[INFO] Digest mismatch -> rollout restart"
-      kubectl rollout restart deploy/eva-agent -n "$NS"
+      kubectl "${KUBECTL_CONTEXT_ARGS[@]}" rollout restart deploy/eva-agent -n "$NS"
     else
       echo "[INFO] Digest matches -> skip rollout restart"
     fi
   else
     echo "[INFO] CHECK_DIGEST=0 -> restart on same tag"
-    kubectl rollout restart deploy/eva-agent -n "$NS"
+    kubectl "${KUBECTL_CONTEXT_ARGS[@]}" rollout restart deploy/eva-agent -n "$NS"
   fi
 else
   echo "[INFO] Image tag changed or missing -> Helm rollout is sufficient"

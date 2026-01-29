@@ -3,7 +3,7 @@ routerSpec:
   nodeSelectorTerms: []
 
 servingEngineSpec:
-  runtimeClassName: ""
+  runtimeClassName: "nvidia"
   modelSpec:
     - name: "qwen3-vl-8b-fp8"
       modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
