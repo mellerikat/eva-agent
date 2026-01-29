@@ -21,6 +21,8 @@ Options:
   --vllm-chart-version <v>   vLLM chart version (default: 0.1.7)
   --qdrant-values <file>     Extra values file for Qdrant (repeatable)
   --vllm-values <file>       Extra values file for vLLM (repeatable)
+  --aws-credential <profile> AWS CLI profile name to seed aws-credentials Secret
+  --aws-secret-name <name>   Secret name for AWS creds (default: aws-credentials)
   -h, --help                 Show help
 
 Expected layout under base-dir:
@@ -41,6 +43,8 @@ RELEASE_VERSION="${RELEASE_VERSION:-2.5.0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.15.0}"
 VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.7}"
+AWS_PROFILE_NAME="${AWS_PROFILE_NAME:-}"
+AWS_SECRET_NAME="${AWS_SECRET_NAME:-aws-credentials}"
 
 QDRANT_VALUES_EXTRA=()
 VLLM_VALUES_EXTRA=()
@@ -54,6 +58,8 @@ while [ "${1:-}" != "" ]; do
     --vllm-chart-version) VLLM_CHART_VERSION="$2"; shift 2 ;;
     --qdrant-values) QDRANT_VALUES_EXTRA+=("$2"); shift 2 ;;
     --vllm-values) VLLM_VALUES_EXTRA+=("$2"); shift 2 ;;
+    --aws-credential) AWS_PROFILE_NAME="$2"; shift 2 ;;
+    --aws-secret-name) AWS_SECRET_NAME="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "[ERROR] Unknown option: $1" >&2; usage; exit 1 ;;
   esac
@@ -61,6 +67,9 @@ done
 
 command -v helm >/dev/null 2>&1 || { echo "[ERROR] helm not found" >&2; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "[ERROR] kubectl not found" >&2; exit 1; }
+if [ -n "${AWS_PROFILE_NAME}" ]; then
+  command -v aws >/dev/null 2>&1 || { echo "[ERROR] aws CLI not found (required for --aws-credential)" >&2; exit 1; }
+fi
 
 HELM_PLUGINS="$(helm env 2>/dev/null | awk -F= '/^HELM_PLUGINS=/{print $2}' | tr -d '\"')"
 if [ -z "$HELM_PLUGINS" ]; then
@@ -140,6 +149,27 @@ done
 
 echo "[INFO] Namespace: ${NS}"
 echo "[INFO] Release: ${RELEASE_VERSION} (script supports >= 2.5.0 layout)"
+if [ -n "${AWS_PROFILE_NAME}" ]; then
+  AWS_ACCESS_KEY_ID="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_access_key_id)"
+  AWS_SECRET_ACCESS_KEY="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_secret_access_key)"
+  AWS_REGION="$(aws --profile "${AWS_PROFILE_NAME}" configure get region)"
+
+  if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+    echo "[ERROR] Missing aws_access_key_id or aws_secret_access_key in profile '${AWS_PROFILE_NAME}'." >&2
+    exit 1
+  fi
+  if [ -z "${AWS_REGION}" ]; then
+    echo "[ERROR] Missing region in profile '${AWS_PROFILE_NAME}'." >&2
+    exit 1
+  fi
+
+  kubectl -n "${NS}" create secret generic "${AWS_SECRET_NAME}" \
+    --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+    --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+    --from-literal=AWS_REGION="${AWS_REGION}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  echo "[INFO] Upserted Secret ${AWS_SECRET_NAME} from AWS profile ${AWS_PROFILE_NAME}"
+fi
 
 helm upgrade --install eva-agent-qdrant qdrant/qdrant \
   --version="${QDRANT_CHART_VERSION}" \
