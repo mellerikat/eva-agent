@@ -2,19 +2,19 @@ apiVersion: v1
 entries:
   eva-agent:
   - apiVersion: v2
-    appVersion: 2.5.0
-    created: "2026-01-30T15:18:26.617074913Z"
+    appVersion: 2.4.0
+    created: "2026-01-30T15:47:28.677701525Z"
     description: eva-agent service
-    digest: 21f677e22bfa6abb73d47e7e7d80ccd41b8e1fe9b4670975dbd73beb993dccec
+    digest: 32c9e9516dfeb97bc9d728aaaae270b009feedd7b4892cebea8d5e3524be6278
     icon: https://github.com/mellerikat.png
     name: eva-agent
     type: application
     urls:
-    - eva-agent-2.5.0.tgz
-    version: 2.5.0
+    - eva-agent-2.4.0.tgz
+    version: 2.4.0
   - apiVersion: v2
     appVersion: 2.1.1
-    created: "2026-01-30T15:18:26.615910035Z"
+    created: "2026-01-30T15:47:28.674751481Z"
     description: eva-agent service
     digest: 3028a0fc081dd81ba98134344e562e22f536461d2561c2d06fe247c412e12785
     name: eva-agent
@@ -24,7 +24,7 @@ entries:
     version: 2.1.2
   - apiVersion: v2
     appVersion: 2.1.1
-    created: "2026-01-30T15:18:26.615154831Z"
+    created: "2026-01-30T15:47:28.673415785Z"
     description: eva-agent service
     digest: 934773ff51e97ca2e2074742febcceadd0c25c28e3bbb00bb043edfd7548646c
     name: eva-agent
@@ -35,7 +35,7 @@ entries:
   eva-agent-init:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-01-30T15:18:26.617408955Z"
+    created: "2026-01-30T15:47:28.67839484Z"
     description: eva-agent initital setup chart
     digest: 86c08134d39888156285a23e78e2e2fbc26b88955d01db5543f424c349553169
     name: eva-agent-init
@@ -43,4 +43,4 @@ entries:
     urls:
     - eva-agent-init-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-30T15:18:26.614224751Z"
+generated: "2026-01-30T15:47:28.672763354Z"
