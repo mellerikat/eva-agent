@@ -112,19 +112,16 @@ if [ "$HELM_MAJOR" -ge 4 ]; then
   chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh" "${VLLM_PLUGIN_DIR}/post-renderer.sh"
 
   mkdir -p "${HELM_PLUGINS}"
-  if [ ! -d "${HELM_PLUGINS}/eva-agent-qdrant" ]; then
-    cp -a "${QDRANT_PLUGIN_DIR}" "${HELM_PLUGINS}/"
+  # Always refresh plugins from the local source to pick up changes.
+  if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-qdrant-postrenderer"; then
+    helm plugin remove "eva-agent-qdrant-postrenderer" >/dev/null 2>&1 || true
   fi
-  if [ ! -d "${HELM_PLUGINS}/eva-agent-vllm" ]; then
-    cp -a "${VLLM_PLUGIN_DIR}" "${HELM_PLUGINS}/"
+  if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-vllm-postrenderer"; then
+    helm plugin remove "eva-agent-vllm-postrenderer" >/dev/null 2>&1 || true
   fi
-
-  if ! helm plugin list | awk '{print $1}' | grep -qx "eva-agent-qdrant-postrenderer"; then
-    helm plugin install "${HELM_PLUGINS}/eva-agent-qdrant"
-  fi
-  if ! helm plugin list | awk '{print $1}' | grep -qx "eva-agent-vllm-postrenderer"; then
-    helm plugin install "${HELM_PLUGINS}/eva-agent-vllm"
-  fi
+  rm -rf "${HELM_PLUGINS}/eva-agent-qdrant" "${HELM_PLUGINS}/eva-agent-vllm"
+  helm plugin install "${QDRANT_PLUGIN_DIR}"
+  helm plugin install "${VLLM_PLUGIN_DIR}"
 
   qdrant_post_renderer="eva-agent-qdrant-postrenderer"
   vllm_post_renderer="eva-agent-vllm-postrenderer"

@@ -13,7 +13,6 @@ persistence:
   size: 10Gi
   annotations: {}
   storageVolumeName: eva-agent-qdrant-storage
-  # storageSubPath: ""
   storageClassName: eva-agent-sc-bs
 
 nodeSelector: {}

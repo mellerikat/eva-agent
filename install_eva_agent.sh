@@ -9,7 +9,7 @@ fi
 # Safety flags: fail fast, no unset vars, propagate pipe errors.
 set -euo pipefail
 
-# EVA Agent deploy: ECR login -> dockerConfig -> Helm upgrade -> optional rollout restart.
+# EVA Agent deploy: sync AWS creds -> Helm upgrade -> optional rollout restart.
 
 usage() {
   cat <<'USAGE'
@@ -17,19 +17,20 @@ Usage:
   ./install_eva_agent.sh [options]
 
 Options:
-  --chart <chart>             Helm chart reference (default: eva-agent/eva-agent)
-  --chart-version <ver>       Helm chart version (latest if omitted)
-  --image <tag>               Image tag (defaults to values.yaml image.tag)
-  --namespace <ns>            Namespace (default: eva-agent)
-  --context <ctx>             Kube context (default: current context)
-  --base-dir <dir>            Base directory with eva-agent values (default: pwd)
-  --ecr-host <host>           ECR host (default: 339713051385.dkr.ecr.ap-northeast-2.amazonaws.com)
-  --ecr-repo <repo>           ECR repo name (default: mellerikat/release/eva-agent)
-  --profile <aws-profile>     AWS profile (default: default)
-  --check-digest <0|1>        Compare digest when tag is the same (default: 1)
-  --docker-config <path>      DOCKER_CONFIG path (default: /tmp/docker)
-  -f, --values <file>         Extra values file (repeatable)
-  -h, --help                  Show help
+  --chart <chart>                   Helm chart reference (default: eva-agent/eva-agent)
+  --chart-version <ver>             Helm chart version (latest if omitted)
+  --image <tag>                     Image tag (defaults to values.yaml image.tag)
+  --namespace <ns>                  Namespace (default: eva-agent)
+  --context <ctx>                   Kube context (default: current context)
+  --base-dir <dir>                  Base directory with eva-agent values (default: pwd)
+  --ecr-host <host>                 ECR host (default: 339713051385.dkr.ecr.ap-northeast-2.amazonaws.com)
+  --ecr-repo <repo>                 ECR repo name (default: mellerikat/release/eva-agent)
+  --profile <aws-profile>           AWS profile (default: default)
+  --check-digest <0|1>              Compare digest when tag is the same (default: 0)
+  --aws-credentials-secret <name>   AWS credentials secret name (default: aws-credentials)
+  --sync-aws-credentials <0|1>      Create/update aws credentials secret (default: 1)
+  -f, --values <file>               Extra values file (repeatable)
+  -h, --help                        Show help
 
 Expected layout under base-dir:
   ./eva-agent/values.yaml
@@ -43,6 +44,16 @@ Examples:
 USAGE
 }
 
+mask_secret() {
+  local value="${1:-}"
+  local len="${#value}"
+  if [ "$len" -le 8 ]; then
+    printf '****'
+    return
+  fi
+  printf '%s****%s' "${value:0:4}" "${value: -4}"
+}
+
 # Defaults (override via env vars or CLI).
 NS="${NS:-eva-agent}"
 AWS_ECR_HOST="${AWS_ECR_HOST:-339713051385.dkr.ecr.ap-northeast-2.amazonaws.com}"
@@ -51,10 +62,11 @@ ECR_REPO_NAME="${ECR_REPO_NAME:-mellerikat/release/eva-agent}"
 CHART="${CHART:-eva-agent/eva-agent}"
 CHART_VERSION="${CHART_VERSION:-}"
 IMAGE_TAG="${IMAGE_TAG:-}"
-CHECK_DIGEST="${CHECK_DIGEST:-1}"
-DOCKER_CONFIG="${DOCKER_CONFIG:-/tmp/docker}"
+CHECK_DIGEST="${CHECK_DIGEST:-0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 KUBE_CONTEXT="${KUBE_CONTEXT:-}"
+AWS_CREDENTIALS_SECRET="${AWS_CREDENTIALS_SECRET:-aws-credentials}"
+SYNC_AWS_CREDENTIALS="${SYNC_AWS_CREDENTIALS:-1}"
 EXTRA_VALUES=()
 
 # Parse CLI args (extra values are collected in an array).
@@ -70,7 +82,8 @@ while [ "${1:-}" != "" ]; do
     --ecr-repo) ECR_REPO_NAME="$2"; shift 2 ;;
     --profile) AWS_PROFILE="$2"; shift 2 ;;
     --check-digest) CHECK_DIGEST="$2"; shift 2 ;;
-    --docker-config) DOCKER_CONFIG="$2"; shift 2 ;;
+    --aws-credentials-secret) AWS_CREDENTIALS_SECRET="$2"; shift 2 ;;
+    --sync-aws-credentials) SYNC_AWS_CREDENTIALS="$2"; shift 2 ;;
     -f|--values) EXTRA_VALUES+=("$2"); shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "[ERROR] Unknown option: $1" >&2; usage; exit 1 ;;
@@ -87,6 +100,7 @@ if [ -z "$AWS_PROFILE" ]; then
   AWS_PROFILE="default"
 fi
 echo "[INFO] AWS Profile: ${AWS_PROFILE}"
+echo "[INFO] AWS Credentials Secret: ${AWS_CREDENTIALS_SECRET}"
 
 VALUES_DIR="${BASE_DIR}/eva-agent"
 
@@ -124,6 +138,45 @@ if [ -z "$CHART_VERSION" ]; then
 fi
 echo "[INFO] Chart Version: ${CHART_VERSION}"
 
+# Sync AWS credentials into the target cluster (used by initContainer + ECR refresh CronJob).
+if [ "$SYNC_AWS_CREDENTIALS" = "1" ]; then
+  echo "[INFO] Syncing AWS credentials to secret ${AWS_CREDENTIALS_SECRET}..."
+  aws_access_key_id="$(aws configure get aws_access_key_id --profile "$AWS_PROFILE" || true)"
+  aws_secret_access_key="$(aws configure get aws_secret_access_key --profile "$AWS_PROFILE" || true)"
+  aws_session_token="$(aws configure get aws_session_token --profile "$AWS_PROFILE" || true)"
+  if [ "$aws_session_token" = "None" ]; then
+    aws_session_token=""
+  fi
+
+  if [ -z "$aws_access_key_id" ] || [ -z "$aws_secret_access_key" ]; then
+    echo "[ERROR] Missing aws_access_key_id or aws_secret_access_key for profile '${AWS_PROFILE}'." >&2
+    echo "[ERROR] Available profiles:" >&2
+    aws configure list-profiles >&2 || true
+    exit 1
+  fi
+
+  echo "[INFO] AWS_ACCESS_KEY_ID: $(mask_secret "$aws_access_key_id")"
+  echo "[INFO] AWS_SECRET_ACCESS_KEY: $(mask_secret "$aws_secret_access_key")"
+  if [ -n "$aws_session_token" ]; then
+    echo "[INFO] AWS_SESSION_TOKEN: present"
+  else
+    echo "[INFO] AWS_SESSION_TOKEN: not set"
+  fi
+
+  secret_args=(
+    --from-literal=AWS_ACCESS_KEY_ID="$aws_access_key_id"
+    --from-literal=AWS_SECRET_ACCESS_KEY="$aws_secret_access_key"
+  )
+  if [ -n "$aws_session_token" ]; then
+    secret_args+=(--from-literal=AWS_SESSION_TOKEN="$aws_session_token")
+  fi
+
+  kubectl "${KUBECTL_CONTEXT_ARGS[@]}" -n "$NS" create secret generic "$AWS_CREDENTIALS_SECRET" \
+    "${secret_args[@]}" --dry-run=client -o yaml | \
+    kubectl "${KUBECTL_CONTEXT_ARGS[@]}" -n "$NS" apply -f -
+  echo "[INFO] AWS credentials secret applied."
+fi
+
 # Detect the currently deployed image tag to handle same-tag rollouts.
 prev_image="$(kubectl "${KUBECTL_CONTEXT_ARGS[@]}" -n "$NS" get deploy eva-agent \
   -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
@@ -131,25 +184,6 @@ prev_tag=""
 if [ -n "$prev_image" ] && [ "${prev_image#*@}" = "$prev_image" ]; then
   prev_tag="${prev_image##*:}"
 fi
-
-# Prepare a temporary docker config.
-mkdir -p "$DOCKER_CONFIG"
-printf '{"auths":{}}' > "$DOCKER_CONFIG/config.json"
-
-echo "[INFO] Refreshing ECR login..."
-if ! aws ecr get-login-password --profile "$AWS_PROFILE" | \
-  docker --config "$DOCKER_CONFIG" login --username AWS --password-stdin "$AWS_ECR_HOST"; then
-  echo "[ERROR] ECR login failed. Check AWS profile or network." >&2
-  exit 1
-fi
-
-# Create a temporary values file containing dockerConfig.
-docker_config_file="$DOCKER_CONFIG/config.json"
-values_file="$docker_config_file-values.yaml"
-cat > "$values_file" << EOF
-dockerConfig:
-  json: $(cat "$docker_config_file" | base64 -w0)
-EOF
 
 # Include default values only if files exist; append user values after.
 default_values_args=()
@@ -169,7 +203,6 @@ echo "[INFO] Running helm upgrade..."
 helm upgrade --install eva-agent "$CHART" --version="$CHART_VERSION" -n "$NS" \
   "${HELM_CONTEXT_ARGS[@]}" \
   "${default_values_args[@]}" \
-  -f "$values_file" \
   "${extra_values_args[@]}" \
   ${IMAGE_TAG:+--set image.tag="$IMAGE_TAG"}
 
@@ -203,6 +236,4 @@ else
   echo "[INFO] Image tag changed or missing -> Helm rollout is sufficient"
 fi
 
-# Cleanup temporary files.
-rm -f "$values_file"
-rm -f "$DOCKER_CONFIG/config.json"
+# No temporary files to cleanup.

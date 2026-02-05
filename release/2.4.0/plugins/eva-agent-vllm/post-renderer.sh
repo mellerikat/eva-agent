@@ -31,6 +31,18 @@ metadata:
 EOF
 
 #
+# Patch 1b) Keep shared PV after helm uninstall
+#
+cat > pv-keep-patch.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: placeholder-name
+  annotations:
+    helm.sh/resource-policy: keep
+EOF
+
+#
 # Patch 2) Router probes (the chart's values didn't reflect, so we patch the rendered Deployment)
 #
 cat > router-probes-patch.yaml << 'EOF'
@@ -68,6 +80,24 @@ spec:
             failureThreshold: 6
 EOF
 
+#
+# Patch 3) Override HF_HOME for vLLM containers (shared PVC path)
+#
+cat > hf-home-patch.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder-name
+spec:
+  template:
+    spec:
+      containers:
+        - name: vllm
+          env:
+            - name: HF_HOME
+              value: /data/shared-pvc-storage
+EOF
+
 cat > kustomization.yaml << 'EOF'
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -81,12 +111,28 @@ patches:
     target:
       kind: PersistentVolumeClaim
       name: eva-agent-vllm-.*-storage-claim
+  - path: pvc-keep-patch.yaml
+    target:
+      kind: PersistentVolumeClaim
+      name: eva-agent-vllm-shared-pvc-storage-claim
+
+  # Keep shared PV
+  - path: pv-keep-patch.yaml
+    target:
+      kind: PersistentVolume
+      name: eva-agent-vllm-shared-pvc-storage
 
   # Router probes
   - path: router-probes-patch.yaml
     target:
       kind: Deployment
       name: eva-agent-vllm-deployment-router
+
+  # HF_HOME override for engine pods
+  - path: hf-home-patch.yaml
+    target:
+      kind: Deployment
+      name: eva-agent-vllm-.*-deployment-vllm
 EOF
 
 kustomize build .

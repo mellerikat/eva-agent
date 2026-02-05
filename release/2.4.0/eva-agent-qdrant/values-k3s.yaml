@@ -1,0 +1,3 @@
+nodeSelector:
+  node.kubernetes.io/instance-type: k3s
+  beta.kubernetes.io/os: linux
