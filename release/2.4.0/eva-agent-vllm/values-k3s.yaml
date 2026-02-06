@@ -64,10 +64,6 @@ servingEngineSpec:
             operator: In
             values:
               - linux
-        #   - key: nvidia.com/gpu
-        #     operator: In
-        #     values:
-        #       - "true"
 
 sharedPvcStorage:
   mode: static

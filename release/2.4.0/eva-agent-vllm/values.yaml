@@ -64,13 +64,3 @@ servingEngineSpec:
           - "4096"
 
       nodeSelectorTerms: []
-
-sharedPvcStorage:
-  mode: static
-  size: "30Gi"
-  accessModes:
-    - "ReadWriteMany"
-  storageClass: "eva-agent-sc-fs"
-  nfs:
-    server: "localhost"
-    path: /data001/share/eva-agent/vllm-cache
