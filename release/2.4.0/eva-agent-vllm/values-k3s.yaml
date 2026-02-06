@@ -68,16 +68,13 @@ servingEngineSpec:
         #     operator: In
         #     values:
         #       - "true"
-        # - matchExpressions:
-        #   - key: node.kubernetes.io/instance-type
-        #     operator: In
-        #     values:
-        #       - k3s
-        #   - key: beta.kubernetes.io/os
-        #     operator: In
-        #     values:
-        #       - linux
-        #   - key: nvidia.com/gpu.present
-        #     operator: In
-        #     values:
-        #       - "true"
+
+sharedPvcStorage:
+  mode: static
+  size: "30Gi"
+  accessModes:
+    - "ReadWriteMany"
+  storageClass: "eva-agent-sc-fs"
+  nfs:
+    server: "localhost"
+    path: /data001/share/eva-agent/vllm-cache

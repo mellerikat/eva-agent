@@ -19,10 +19,6 @@ servingEngineSpec:
       requestMemory: "10Gi"
       requestGPU: 1
 
-      pvcStorage: "30Gi"
-      storageClass: "eva-agent-sc-fs"
-      pvcAccessMode:
-        - "ReadWriteMany"
       envFromSecret:
         name: aws-credentials
       initContainer:
@@ -31,8 +27,10 @@ servingEngineSpec:
         command:
           - sh
           - -c
-          - aws s3 sync s3://s3-an2-mellerikat-release-eva-agent/vllm/hf /data
-        mountPvcStorage: true
+          - aws s3 sync s3://s3-an2-mellerikat-release-eva-agent/vllm/hf /data/shared-pvc-storage
+        extraVolumeMounts:
+          - name: eva-agent-vllm-shared-pvc-storage
+            mountPath: /data/shared-pvc-storage
         env:
           - name: AWS_REGION
             value: ap-northeast-2
@@ -59,3 +57,10 @@ servingEngineSpec:
           operator: In
           values:
             - ng-an2-eva-agent-gpu
+
+sharedPvcStorage:
+  mode: dynamic
+  size: "30Gi"
+  accessModes:
+    - "ReadWriteMany"
+  storageClass: "eva-agent-sc-fs"

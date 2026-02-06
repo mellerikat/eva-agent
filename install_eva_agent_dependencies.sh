@@ -29,7 +29,6 @@ Expected layout under base-dir:
   ./eva-agent-qdrant/values.yaml
   ./eva-agent-vllm/values.yaml
   ./plugin/eva-agent-qdrant/{plugin.yaml,post-renderer.sh}
-  ./plugin/eva-agent-vllm/{plugin.yaml,post-renderer.sh}
 
 Examples:
   ./install_eva_agent_dependencies.sh \
@@ -42,7 +41,7 @@ NS="${NS:-eva-agent}"
 RELEASE_VERSION="${RELEASE_VERSION:-2.5.0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.15.0}"
-VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.7}"
+VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.8}"
 AWS_PROFILE_NAME="${AWS_PROFILE_NAME:-}"
 AWS_SECRET_NAME="${AWS_SECRET_NAME:-aws-credentials}"
 
@@ -80,7 +79,6 @@ QDRANT_DIR="${BASE_DIR}/eva-agent-qdrant"
 VLLM_DIR="${BASE_DIR}/eva-agent-vllm"
 PLUGIN_DIR="${BASE_DIR}/plugin"
 QDRANT_PLUGIN_DIR="${PLUGIN_DIR}/eva-agent-qdrant"
-VLLM_PLUGIN_DIR="${PLUGIN_DIR}/eva-agent-vllm"
 
 require_file() {
   if [ ! -f "$1" ]; then
@@ -101,37 +99,26 @@ if [ -z "$HELM_MAJOR" ]; then
 fi
 
 qdrant_post_renderer=""
-vllm_post_renderer=""
 
 if [ "$HELM_MAJOR" -ge 4 ]; then
   require_file "${QDRANT_PLUGIN_DIR}/plugin.yaml"
   require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-  require_file "${VLLM_PLUGIN_DIR}/plugin.yaml"
-  require_file "${VLLM_PLUGIN_DIR}/post-renderer.sh"
-
-  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh" "${VLLM_PLUGIN_DIR}/post-renderer.sh"
+  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
 
   mkdir -p "${HELM_PLUGINS}"
   # Always refresh plugins from the local source to pick up changes.
   if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-qdrant-postrenderer"; then
     helm plugin remove "eva-agent-qdrant-postrenderer" >/dev/null 2>&1 || true
   fi
-  if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-vllm-postrenderer"; then
-    helm plugin remove "eva-agent-vllm-postrenderer" >/dev/null 2>&1 || true
-  fi
-  rm -rf "${HELM_PLUGINS}/eva-agent-qdrant" "${HELM_PLUGINS}/eva-agent-vllm"
+  rm -rf "${HELM_PLUGINS}/eva-agent-qdrant"
   helm plugin install "${QDRANT_PLUGIN_DIR}"
-  helm plugin install "${VLLM_PLUGIN_DIR}"
 
   qdrant_post_renderer="eva-agent-qdrant-postrenderer"
-  vllm_post_renderer="eva-agent-vllm-postrenderer"
 else
   require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-  require_file "${VLLM_PLUGIN_DIR}/post-renderer.sh"
-  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh" "${VLLM_PLUGIN_DIR}/post-renderer.sh"
+  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
 
   qdrant_post_renderer="${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-  vllm_post_renderer="${VLLM_PLUGIN_DIR}/post-renderer.sh"
 fi
 
 qdrant_values_args=(-f "${QDRANT_DIR}/values.yaml")
@@ -174,8 +161,7 @@ helm upgrade --install eva-agent-qdrant qdrant/qdrant \
   "${qdrant_values_args[@]}" \
   --post-renderer "${qdrant_post_renderer}"
 
-helm upgrade --install eva-agent-vllm vllm/vllm-stack \
+helm upgrade --install eva-agent-vllm eva-agent/eva-agent-vllm \
   --version="${VLLM_CHART_VERSION}" \
   -n "${NS}" \
-  "${vllm_values_args[@]}" \
-  --post-renderer "${vllm_post_renderer}"
+  "${vllm_values_args[@]}"

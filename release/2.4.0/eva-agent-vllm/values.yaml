@@ -66,6 +66,7 @@ servingEngineSpec:
       nodeSelectorTerms: []
 
 sharedPvcStorage:
+  mode: static
   size: "30Gi"
   accessModes:
     - "ReadWriteMany"
