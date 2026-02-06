@@ -1,5 +1,18 @@
 replicaCount: 1
 
+sharedPvcStorage:
+  enabled: true
+  mode: static
+  name: eva-agent-model-pvc-storage
+  size: 20Gi
+  accessModes:
+    - ReadWriteMany
+  storageClass: eva-agent-sc-fs
+  reclaimPolicy: Retain
+  nfs:
+    server: "localhost"
+    path: /data001/share/eva-agent/agent-cache
+
 resources:
   limits:
     # cpu: 100m

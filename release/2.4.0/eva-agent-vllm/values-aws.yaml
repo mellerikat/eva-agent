@@ -38,7 +38,7 @@ servingEngineSpec:
       vllmConfig:
         host: "0.0.0.0"
         tensorParallelSize: 1
-        gpuMemoryUtilization: 0.7
+        gpuMemoryUtilization: 0.85
         enableChunkedPrefill: true
         enablePrefixCaching: true
         maxModelLen: 12288
@@ -47,7 +47,7 @@ servingEngineSpec:
           - "--served-model-name"
           - "qwen3-vl-8b-instruct-fp8"
           - "--kv-cache-dtype"
-          - "auto"
+          - "fp8"
           - "--max-num-batched-tokens"
           - "4096"
 
