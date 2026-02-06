@@ -12,6 +12,7 @@ persistence:
 
 sharedPvcStorage:
   enabled: true
+  mode: static
   name: eva-agent-model-pvc-storage
   size: 20Gi
   accessModes:
