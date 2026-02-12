@@ -1,0 +1,66 @@
+routerSpec:
+  enableRouter: true
+  routingLogic: "roundrobin"
+  serviceDiscovery: "static"
+  staticBackends: "http://eva-agent-vllm-qwen3-vl-8b-fp8-engine-service.eva-agent.svc.cluster.local"
+  staticModels: "qwen3-vl-8b-instruct-fp8"
+
+  serviceType: ClusterIP
+  servicePort: 80
+  containerPort: 8000
+
+  resources:
+    requests:
+      cpu: 400m
+      memory: 2Gi
+    limits:
+      memory: 4Gi
+
+  nodeSelectorTerms: []
+
+servingEngineSpec:
+  runtimeClassName: ""
+  modelSpec:
+    - serviceAccountName: sa-eva-agent
+      name: "qwen3-vl-8b-fp8"
+      modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
+      repository: "vllm/vllm-openai"
+      tag: "v0.14.1"
+
+      replicaCount: 1
+      requestCPU: 4
+      requestMemory: "10Gi"
+      requestGPU: 1
+      envFromSecret:
+        name: aws-credentials
+      initContainer:
+        name: s3-sync
+        image: amazon/aws-cli:2.33.8
+        command:
+          - sh
+          - -c
+          - aws s3 sync s3://s3-an2-mellerikat-release-eva-agent/vllm/hf /data/shared-pvc-storage
+        extraVolumeMounts:
+          - name: eva-agent-vllm-shared-pvc-storage
+            mountPath: /data/shared-pvc-storage
+        env:
+          - name: AWS_REGION
+            value: ap-northeast-2
+
+      vllmConfig:
+        host: "0.0.0.0"
+        tensorParallelSize: 1
+        gpuMemoryUtilization: 0.9
+        enableChunkedPrefill: true
+        enablePrefixCaching: true
+        maxModelLen: 12288
+        dtype: "auto"
+        extraArgs:
+          - "--served-model-name"
+          - "qwen3-vl-8b-instruct-fp8"
+          - "--kv-cache-dtype"
+          - "auto"
+          - "--max-num-batched-tokens"
+          - "4096"
+
+      nodeSelectorTerms: []
