@@ -1,4 +1,7 @@
 routerSpec:
+  staticBackends: "http://eva-agent-vllm-qwen3-vl-8b-fp8-engine-service.eva-agent.svc.cluster.local,http://external-vllm:port"
+  staticModels: "qwen3-vl-8b-instruct-fp8,Exaone4.0"
+
   nodeSelectorTerms:
     - matchExpressions:
       - key: node.kubernetes.io/instance-type
@@ -41,7 +44,7 @@ servingEngineSpec:
       vllmConfig:
         host: "0.0.0.0"
         tensorParallelSize: 1
-        gpuMemoryUtilization: 0.7
+        gpuMemoryUtilization: 0.6
         enableChunkedPrefill: true
         enablePrefixCaching: true
         maxModelLen: 12288
