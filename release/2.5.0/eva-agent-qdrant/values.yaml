@@ -8,6 +8,7 @@ serviceAccount:
 image:
   pullPolicy: Always
 
+# Storage PVC config
 persistence:
   accessModes: ["ReadWriteOnce"]
   size: 10Gi
@@ -15,35 +16,20 @@ persistence:
   storageVolumeName: eva-agent-qdrant-storage
   storageClassName: eva-agent-sc-bs
 
-# Snapshot settings (on-demand only; keep disabled by default).
-# Note: qdrant chart snapshot restoration path is collection-based and
-# restoration is intended for single-node operation.
+# Snapshot PVC config (backup point)
 snapshotPersistence:
-  enabled: false
+  enabled: true
   accessModes: ["ReadWriteOnce"]
   size: 10Gi
   annotations: {}
-  # snapshotsVolumeName: eva-agent-qdrant-snapshots
+  snapshotsVolumeName: eva-agent-qdrant-snapshots
   storageClassName: eva-agent-sc-bs
 
-# Keep chart default startup path unless full snapshot restore is explicitly needed.
-args:
-  - "./config/initialize.sh"
-
-# Full storage snapshot restore (on-demand only; keep disabled by default).
-# NOTE:
-# - This is for whole-storage snapshot, not per-collection snapshot.
-# - Upstream chart has no dedicated boolean wiring for --storage-snapshot.
-# - To execute restore, set enabled=true and replace args as shown below.
-fullStorageSnapshotRestore:
-  enabled: false
-  snapshotPath: /qdrant/snapshots/<full-storage-snapshot>.snapshot
-  # one-time runbook:
-  # 1) set enabled: true
-  # 2) set args:
-  #      - "./entrypoint.sh --storage-snapshot /qdrant/snapshots/<full-storage-snapshot>.snapshot"
-  # 3) helm upgrade and wait for restore completion
-  # 4) 반드시 args를 "./config/initialize.sh" 로 되돌리고 enabled: false 로 복구
-  #    (미복구 시 재기동 때마다 restore 시도됨)
+# Optional advanced external PVC source for runtime API recovery.
+# snapshotRestoration:
+#   enabled: false
+#   pvcName: qdrant-snapshot-restore-pvc
+#   mountPath: /qdrant/snapshot-restoration
+#   snapshots: []
 
 nodeSelector: {}
