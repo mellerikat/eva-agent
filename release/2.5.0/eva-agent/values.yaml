@@ -8,7 +8,7 @@ podSecurityContext:
 persistence:
   size: 20Gi
   s3Sync:
-    enabled: false
+    enabled: true
 
 sharedPvcStorage:
   enabled: true
