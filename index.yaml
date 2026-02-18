@@ -3,9 +3,9 @@ entries:
   eva-agent:
   - apiVersion: v2
     appVersion: 2.5.0
-    created: "2026-02-13T08:47:26.657913426Z"
+    created: "2026-02-18T03:43:28.916047116Z"
     description: eva-agent service
-    digest: 0be0ecc98a045a2b99986f7e517e9145471a621c04e280984bdd3dd597eea29d
+    digest: cfd928beaa8af288424458e69280d59e2e355b0e056df2f3f0073e9e4155a916
     icon: https://github.com/mellerikat.png
     name: eva-agent
     type: application
@@ -66,4 +66,4 @@ entries:
     urls:
     - eva-agent-vllm-0.1.8.tgz
     version: 0.1.8
-generated: "2026-02-13T08:47:26.654922605Z"
+generated: "2026-02-18T03:43:28.911543378Z"
