@@ -1,0 +1,4 @@
+nodeSelector: {}
+
+sharedPvcStorage:
+  mode: dynamic

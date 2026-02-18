@@ -3,18 +3,18 @@
 storageClass:
 
   blockStorage:
-    provisioner: disk.csi.nks.naverncp.com
+    enabled: true
+    name: eva-agent-sc-bs
     parameters:
-      type: SSD
       fsType: ext4
+      type: SSD
+    provisioner: blk.csi.ncloud.com
+    reclaimPolicy: Retain
 
   fileSystem:
-    provisioner: nas.csi.ncloud.com
+    enabled: true
+    name: eva-agent-sc-fs
     parameters:
-      region: KR
-      zone: KR-1
-      volumeName: my-nas-volume
-      volumeSize: "100"  # 단위: GB
-      volumeAllotmentProtocolType: NFS
-      isEncryptedVolume: "false"
-      isReturnProtection: "false"
+      zoneNo: "2"
+    provisioner: nas.csi.ncloud.com
+    reclaimPolicy: Retain
