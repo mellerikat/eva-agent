@@ -1,0 +1,92 @@
+image:
+  tag: "2.6.0"
+
+podSecurityContext:
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+
+persistence:
+  size: 20Gi
+  s3Sync:
+    enabled: true
+
+sharedPvcStorage:
+  enabled: true
+  mode: dynamic
+  name: eva-agent-model-pvc-storage
+  size: 20Gi
+  accessModes:
+    - ReadWriteMany
+  storageClass: eva-agent-sc-fs
+  reclaimPolicy: Retain
+
+dockerConfig:
+  enabled: false
+  name: eva-agent-dockerconfig
+
+imagePullSecrets:
+  - eva-agent-dockerconfig
+
+awsCredentialsSecretName: aws-credentials
+
+ecrRefresh:
+  enabled: true
+  schedule: "0 */6 * * *"
+  registry: 339713051385.dkr.ecr.ap-northeast-2.amazonaws.com
+  region: ap-northeast-2
+  secretName: eva-agent-dockerconfig
+  kubectlImage: bitnami/kubectl:latest
+  serviceAccount:
+    create: false
+    name: "sa-eva-agent"
+
+serviceAccount:
+  create: false
+  name: "sa-eva-agent"
+
+replicaCount: 1
+
+env:
+  # base
+  - name: MODEL_CATALOG_FILE
+    value: config/model_catalog.json
+
+  # vllm
+  - name: VLLM_VLM_URL
+    value: http://eva-agent-vllm-router-service/v1
+  - name: VLLM_LLM_URL
+    value: http://eva-agent-vllm-router-service/v1
+
+  # qdrant
+  - name: QDRANT_BASE_URL
+    value: http://eva-agent-qdrant:6333
+
+  # o11y
+  # - name: LANGFUSE_HOST
+  #   value: https://cloud.langfuse.com
+  # - name: LANGFUSE_MEDIA_UPLOAD_ENABLED
+  #   value: "false"
+  # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+  #   value: https://cloud.langfuse.com/api/public/otel
+
+  # Azure OpenAI
+  # - name: OPENAI_API_TYPE
+  #   value: azure
+  # - name: OPENAI_API_VERSION
+  #   value: 2025-04-01-preview
+  # - name: AZURE_OPENAI_ENDPOINT
+  #   value: https://dev.dxengws.apim.lgedx.biz/shared-10000
+  # - name: DEPLOYMENT_NAME
+  #   value: gpt-5-chat-2025-08-07
+  # - name: AZURE_MANAGEMENT_BASE_URL
+  #   value: https://management.azure.com
+  # AZURE_OPENAI_SUBSCRIPTION_ID=
+  # AZURE_OPENAI_RESOURCE_GROUP_NAME=
+  # AZURE_OPENAI_ACCOUNT_NAME=
+  # AZURE_CLIENT_ID=
+  # AZURE_TENANT_ID=
+
+  # Clova
+  # secrets: CLOVA_API_KEY
+
+nodeSelector: {}
