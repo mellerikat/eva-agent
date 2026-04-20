@@ -27,6 +27,7 @@ Options:
   --ecr-repo <repo>                 ECR repo name (default: mellerikat/release/eva-agent)
   --profile <aws-profile>           AWS profile (default: default)
   --check-digest <0|1>              Compare digest when tag is the same (default: 0)
+  --force-conflicts <0|1>           Force Helm to replace drifted resources on upgrade (default: 0)
   --aws-credentials-secret <name>   AWS credentials secret name (default: aws-credentials)
   --sync-aws-credentials <0|1>      Create/update aws credentials secret (default: 1)
   -f, --values <file>               Extra values file (repeatable)
@@ -63,6 +64,7 @@ CHART="${CHART:-eva-agent/eva-agent}"
 CHART_VERSION="${CHART_VERSION:-2.7.0}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 CHECK_DIGEST="${CHECK_DIGEST:-0}"
+FORCE_CONFLICTS="${FORCE_CONFLICTS:-0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 KUBE_CONTEXT="${KUBE_CONTEXT:-}"
 AWS_CREDENTIALS_SECRET="${AWS_CREDENTIALS_SECRET:-aws-credentials}"
@@ -82,6 +84,7 @@ while [ "${1:-}" != "" ]; do
     --ecr-repo) ECR_REPO_NAME="$2"; shift 2 ;;
     --profile) AWS_PROFILE="$2"; shift 2 ;;
     --check-digest) CHECK_DIGEST="$2"; shift 2 ;;
+    --force-conflicts) FORCE_CONFLICTS="$2"; shift 2 ;;
     --aws-credentials-secret) AWS_CREDENTIALS_SECRET="$2"; shift 2 ;;
     --sync-aws-credentials) SYNC_AWS_CREDENTIALS="$2"; shift 2 ;;
     -f|--values) EXTRA_VALUES+=("$2"); shift 2 ;;
@@ -90,10 +93,20 @@ while [ "${1:-}" != "" ]; do
   esac
 done
 
+case "$FORCE_CONFLICTS" in
+  0|1) ;;
+  *)
+    echo "[ERROR] Invalid value for --force-conflicts: ${FORCE_CONFLICTS}. Expected 0 or 1." >&2
+    usage
+    exit 1
+    ;;
+esac
+
 echo "[INFO] Namespace: ${NS}"
 echo "[INFO] ECR Host: ${AWS_ECR_HOST}"
 echo "[INFO] Chart: ${CHART}"
 echo "[INFO] Base Dir: ${BASE_DIR}"
+echo "[INFO] Force Conflicts: ${FORCE_CONFLICTS}"
 
 # If not provided, default to the "default" AWS profile.
 if [ -z "$AWS_PROFILE" ]; then
@@ -199,11 +212,17 @@ for values_path in "${EXTRA_VALUES[@]}"; do
   extra_values_args+=(-f "$values_path")
 done
 
+helm_upgrade_args=()
+if [ "$FORCE_CONFLICTS" = "1" ]; then
+  helm_upgrade_args+=(--force)
+fi
+
 echo "[INFO] Running helm upgrade..."
 helm upgrade --install eva-agent "$CHART" --version="$CHART_VERSION" -n "$NS" \
   "${HELM_CONTEXT_ARGS[@]}" \
   "${default_values_args[@]}" \
   "${extra_values_args[@]}" \
+  "${helm_upgrade_args[@]}" \
   ${IMAGE_TAG:+--set image.tag="$IMAGE_TAG"}
 
 # If the tag is the same, compare digests and restart if needed.
