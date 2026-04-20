@@ -71,6 +71,14 @@ AWS_CREDENTIALS_SECRET="${AWS_CREDENTIALS_SECRET:-aws-credentials}"
 SYNC_AWS_CREDENTIALS="${SYNC_AWS_CREDENTIALS:-1}"
 EXTRA_VALUES=()
 
+HELM_VERSION_RAW="$(helm version --short 2>/dev/null || true)"
+HELM_VERSION_RAW="${HELM_VERSION_RAW#v}"
+HELM_MAJOR="${HELM_VERSION_RAW%%.*}"
+if [ -z "$HELM_MAJOR" ]; then
+  echo "[ERROR] Failed to detect Helm version." >&2
+  exit 1
+fi
+
 # Parse CLI args (extra values are collected in an array).
 while [ "${1:-}" != "" ]; do
   case "$1" in
@@ -214,7 +222,11 @@ done
 
 helm_upgrade_args=()
 if [ "$FORCE_CONFLICTS" = "1" ]; then
-  helm_upgrade_args+=(--force)
+  if [ "$HELM_MAJOR" -ge 4 ]; then
+    helm_upgrade_args+=(--force-conflicts)
+  else
+    helm_upgrade_args+=(--force)
+  fi
 fi
 
 echo "[INFO] Running helm upgrade..."

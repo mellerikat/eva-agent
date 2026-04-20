@@ -54,6 +54,8 @@ env:
   # base
   - name: MODEL_CATALOG_FILE
     value: config/model_catalog.json
+  - name: LOGURU_LEVEL
+    value: INFO
 
   # vllm
   - name: VLLM_VLM_URL
@@ -69,9 +71,28 @@ env:
   # - name: LANGFUSE_HOST
   #   value: https://cloud.langfuse.com
   # - name: LANGFUSE_MEDIA_UPLOAD_ENABLED
-  #   value: "false"
+  #   value: "true"
   # - name: OTEL_EXPORTER_OTLP_ENDPOINT
   #   value: https://cloud.langfuse.com/api/public/otel
+  # - name: LANGFUSE_RETENTION_ENABLED
+  #   value: "true"
+  # - name: LANGFUSE_RETENTION_DAYS
+  #   value: "30"
+  # - name: LANGFUSE_RETENTION_TIMEZONE
+  #   value: UTC
+  # - name: LANGFUSE_RETENTION_TRACE_BATCH_SIZE
+  #   value: "100"
+  # - name: LANGFUSE_MEDIA_RETENTION_ENABLED
+  #   value: "true"
+  # - name: LANGFUSE_MEDIA_S3_ENDPOINT_URL
+  #   value: http://10.157.76.183:9090
+  # - name: LANGFUSE_MEDIA_S3_BUCKET
+  #   value: langfuse
+  # - name: LANGFUSE_MEDIA_S3_PREFIX
+  #   value: media/
+  # - name: LANGFUSE_MEDIA_S3_FORCE_PATH_STYLE
+  #   value: "true"
+  # Secret values for S3 access live in values-secret.yaml
 
   # Azure OpenAI
   # - name: OPENAI_API_TYPE
