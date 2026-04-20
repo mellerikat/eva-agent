@@ -34,7 +34,7 @@ servingEngineSpec:
       vllmConfig:
         host: "0.0.0.0"
         tensorParallelSize: 1
-        gpuMemoryUtilization: 0.85
+        gpuMemoryUtilization: 0.6
         enableChunkedPrefill: true
         enablePrefixCaching: true
         maxModelLen: 12288
@@ -48,3 +48,10 @@ servingEngineSpec:
           - "4096"
 
       nodeSelectorTerms: []
+
+sharedPvcStorage:
+  mode: dynamic
+  size: "30Gi"
+  accessModes:
+    - "ReadWriteMany"
+  storageClass: "eva-agent-sc-fs"
