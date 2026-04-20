@@ -1,0 +1,20 @@
+# Values for Naver Cloud Platform eva-agent-init chart
+
+storageClass:
+
+  blockStorage:
+    enabled: true
+    name: eva-agent-sc-bs
+    parameters:
+      fsType: ext4
+      type: SSD
+    provisioner: blk.csi.ncloud.com
+    reclaimPolicy: Retain
+
+  fileSystem:
+    enabled: true
+    name: eva-agent-sc-fs
+    parameters:
+      zoneNo: "2"
+    provisioner: nas.csi.ncloud.com
+    reclaimPolicy: Retain
