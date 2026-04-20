@@ -17,8 +17,9 @@ Options:
   --namespace <ns>           Namespace (default: eva-agent)
   --release <ver>            Release version (default: 2.6.0)
   --base-dir <dir>           Base directory with values/plugin folders (default: pwd)
+  --components <target>      Install target: both, qdrant, or vllm (default: both)
   --qdrant-chart-version <v> Qdrant chart version (default: 1.16.3)
-  --vllm-chart-version <v>   vLLM chart version (default: 0.1.7)
+  --vllm-chart-version <v>   vLLM chart version (default: 0.1.10)
   --qdrant-values <file>     Extra values file for Qdrant (repeatable)
   --vllm-values <file>       Extra values file for vLLM (repeatable)
   --aws-credential <profile> AWS CLI profile name to seed aws-credentials Secret
@@ -40,8 +41,9 @@ USAGE
 NS="${NS:-eva-agent}"
 RELEASE_VERSION="${RELEASE_VERSION:-2.6.0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
+COMPONENTS="${COMPONENTS:-both}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.16.3}"
-VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.8}"
+VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.10}"
 AWS_PROFILE_NAME="${AWS_PROFILE_NAME:-}"
 AWS_SECRET_NAME="${AWS_SECRET_NAME:-aws-credentials}"
 
@@ -53,6 +55,7 @@ while [ "${1:-}" != "" ]; do
     --namespace) NS="$2"; shift 2 ;;
     --release) RELEASE_VERSION="$2"; shift 2 ;;
     --base-dir) BASE_DIR="$2"; shift 2 ;;
+    --components) COMPONENTS="$2"; shift 2 ;;
     --qdrant-chart-version) QDRANT_CHART_VERSION="$2"; shift 2 ;;
     --vllm-chart-version) VLLM_CHART_VERSION="$2"; shift 2 ;;
     --qdrant-values) QDRANT_VALUES_EXTRA+=("$2"); shift 2 ;;
@@ -63,6 +66,26 @@ while [ "${1:-}" != "" ]; do
     *) echo "[ERROR] Unknown option: $1" >&2; usage; exit 1 ;;
   esac
 done
+
+case "${COMPONENTS}" in
+  both)
+    INSTALL_QDRANT=true
+    INSTALL_VLLM=true
+    ;;
+  qdrant)
+    INSTALL_QDRANT=true
+    INSTALL_VLLM=false
+    ;;
+  vllm)
+    INSTALL_QDRANT=false
+    INSTALL_VLLM=true
+    ;;
+  *)
+    echo "[ERROR] Invalid value for --components: ${COMPONENTS}. Expected one of: both, qdrant, vllm" >&2
+    usage
+    exit 1
+    ;;
+esac
 
 command -v helm >/dev/null 2>&1 || { echo "[ERROR] helm not found" >&2; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "[ERROR] kubectl not found" >&2; exit 1; }
@@ -87,8 +110,12 @@ require_file() {
   fi
 }
 
-require_file "${QDRANT_DIR}/values.yaml"
-require_file "${VLLM_DIR}/values.yaml"
+if [ "${INSTALL_QDRANT}" = true ]; then
+  require_file "${QDRANT_DIR}/values.yaml"
+fi
+if [ "${INSTALL_VLLM}" = true ]; then
+  require_file "${VLLM_DIR}/values.yaml"
+fi
 
 HELM_VERSION_RAW="$(helm version --short 2>/dev/null || true)"
 HELM_VERSION_RAW="${HELM_VERSION_RAW#v}"
@@ -100,39 +127,48 @@ fi
 
 qdrant_post_renderer=""
 
-if [ "$HELM_MAJOR" -ge 4 ]; then
-  require_file "${QDRANT_PLUGIN_DIR}/plugin.yaml"
-  require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
+if [ "${INSTALL_QDRANT}" = true ]; then
+  if [ "$HELM_MAJOR" -ge 4 ]; then
+    require_file "${QDRANT_PLUGIN_DIR}/plugin.yaml"
+    require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
+    chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
 
-  mkdir -p "${HELM_PLUGINS}"
-  # Always refresh plugins from the local source to pick up changes.
-  if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-qdrant-postrenderer"; then
-    helm plugin remove "eva-agent-qdrant-postrenderer" >/dev/null 2>&1 || true
+    mkdir -p "${HELM_PLUGINS}"
+    # Always refresh plugins from the local source to pick up changes.
+    if helm plugin list | awk '{print $1}' | grep -qx "eva-agent-qdrant-postrenderer"; then
+      helm plugin remove "eva-agent-qdrant-postrenderer" >/dev/null 2>&1 || true
+    fi
+    rm -rf "${HELM_PLUGINS}/eva-agent-qdrant"
+    helm plugin install "${QDRANT_PLUGIN_DIR}"
+
+    qdrant_post_renderer="eva-agent-qdrant-postrenderer"
+  else
+    require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
+    chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
+
+    qdrant_post_renderer="${QDRANT_PLUGIN_DIR}/post-renderer.sh"
   fi
-  rm -rf "${HELM_PLUGINS}/eva-agent-qdrant"
-  helm plugin install "${QDRANT_PLUGIN_DIR}"
-
-  qdrant_post_renderer="eva-agent-qdrant-postrenderer"
-else
-  require_file "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-  chmod +x "${QDRANT_PLUGIN_DIR}/post-renderer.sh"
-
-  qdrant_post_renderer="${QDRANT_PLUGIN_DIR}/post-renderer.sh"
 fi
 
-qdrant_values_args=(-f "${QDRANT_DIR}/values.yaml")
-for values_path in "${QDRANT_VALUES_EXTRA[@]}"; do
-  qdrant_values_args+=(-f "$values_path")
-done
+qdrant_values_args=()
+if [ "${INSTALL_QDRANT}" = true ]; then
+  qdrant_values_args=(-f "${QDRANT_DIR}/values.yaml")
+  for values_path in "${QDRANT_VALUES_EXTRA[@]}"; do
+    qdrant_values_args+=(-f "$values_path")
+  done
+fi
 
-vllm_values_args=(-f "${VLLM_DIR}/values.yaml")
-for values_path in "${VLLM_VALUES_EXTRA[@]}"; do
-  vllm_values_args+=(-f "$values_path")
-done
+vllm_values_args=()
+if [ "${INSTALL_VLLM}" = true ]; then
+  vllm_values_args=(-f "${VLLM_DIR}/values.yaml")
+  for values_path in "${VLLM_VALUES_EXTRA[@]}"; do
+    vllm_values_args+=(-f "$values_path")
+  done
+fi
 
 echo "[INFO] Namespace: ${NS}"
 echo "[INFO] Release: ${RELEASE_VERSION} (script supports >= 2.5.0 layout)"
+echo "[INFO] Components: ${COMPONENTS}"
 if [ -n "${AWS_PROFILE_NAME}" ]; then
   AWS_ACCESS_KEY_ID="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_access_key_id)"
   AWS_SECRET_ACCESS_KEY="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_secret_access_key)"
@@ -155,13 +191,17 @@ if [ -n "${AWS_PROFILE_NAME}" ]; then
   echo "[INFO] Upserted Secret ${AWS_SECRET_NAME} from AWS profile ${AWS_PROFILE_NAME}"
 fi
 
-helm upgrade --install eva-agent-qdrant qdrant/qdrant \
-  --version="${QDRANT_CHART_VERSION}" \
-  -n "${NS}" \
-  "${qdrant_values_args[@]}" \
-  --post-renderer "${qdrant_post_renderer}"
+if [ "${INSTALL_QDRANT}" = true ]; then
+  helm upgrade --install eva-agent-qdrant qdrant/qdrant \
+    --version="${QDRANT_CHART_VERSION}" \
+    -n "${NS}" \
+    "${qdrant_values_args[@]}" \
+    --post-renderer "${qdrant_post_renderer}"
+fi
 
-helm upgrade --install eva-agent-vllm eva-agent/eva-agent-vllm \
-  --version="${VLLM_CHART_VERSION}" \
-  -n "${NS}" \
-  "${vllm_values_args[@]}"
+if [ "${INSTALL_VLLM}" = true ]; then
+  helm upgrade --install eva-agent-vllm eva-agent/eva-agent-vllm \
+    --version="${VLLM_CHART_VERSION}" \
+    -n "${NS}" \
+    "${vllm_values_args[@]}"
+fi
