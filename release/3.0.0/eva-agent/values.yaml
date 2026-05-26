@@ -1,5 +1,5 @@
 image:
-  tag: "2.7.0"
+  tag: "3.0.0-dev"
 
 podSecurityContext:
   fsGroup: 10001
@@ -62,6 +62,8 @@ env:
     value: http://eva-agent-vllm-router-service/v1
   - name: VLLM_LLM_URL
     value: http://eva-agent-vllm-router-service/v1
+  - name: VLLM_ENGINE_HEALTH_MODE
+    value: k8s
 
   # qdrant
   - name: QDRANT_BASE_URL
@@ -123,3 +125,7 @@ env:
   #   value: ""
 
 nodeSelector: {}
+
+vllmEngineHealth:
+  rbac:
+    create: true
