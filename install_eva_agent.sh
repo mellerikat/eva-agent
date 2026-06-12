@@ -18,7 +18,7 @@ Usage:
 
 Options:
   --chart <chart>                   Helm chart reference (default: eva-agent/eva-agent)
-  --chart-version <ver>             Helm chart version (default: 2.7.0)
+  --chart-version <ver>             Helm chart version (default: 3.0.0)
   --image <tag>                     Image tag (defaults to values.yaml image.tag)
   --namespace <ns>                  Namespace (default: eva-agent)
   --context <ctx>                   Kube context (default: current context)
@@ -40,8 +40,8 @@ Expected layout under base-dir:
   ./eva-agent/values-aws.yaml (optional)
 
 Examples:
-  ./install_eva_agent.sh --image 2.4.0b1
-  ./install_eva_agent.sh --chart eva-agent/eva-agent --chart-version 2.1.2
+  ./install_eva_agent.sh --image 3.0.0
+  ./install_eva_agent.sh --chart eva-agent/eva-agent --chart-version 3.0.0
 USAGE
 }
 
@@ -61,7 +61,7 @@ AWS_ECR_HOST="${AWS_ECR_HOST:-339713051385.dkr.ecr.ap-northeast-2.amazonaws.com}
 AWS_PROFILE="${AWS_PROFILE:-}"
 ECR_REPO_NAME="${ECR_REPO_NAME:-mellerikat/release/eva-agent}"
 CHART="${CHART:-eva-agent/eva-agent}"
-CHART_VERSION="${CHART_VERSION:-2.7.0}"
+CHART_VERSION="${CHART_VERSION:-3.0.0}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 CHECK_DIGEST="${CHECK_DIGEST:-0}"
 FORCE_CONFLICTS="${FORCE_CONFLICTS:-0}"

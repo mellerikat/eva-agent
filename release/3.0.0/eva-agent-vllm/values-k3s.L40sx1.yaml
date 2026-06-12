@@ -1,25 +1,14 @@
 routerSpec:
-  repository: "lmcache/lmstack-router"
-  tag: "v0.1.10"
-  enableRouter: true
-  routingLogic: "roundrobin"
-  serviceDiscovery: "static"
-  staticBackends: "http://eva-agent-vllm-qwen35-vl-9b-fp8-engine-service.eva-agent.svc.cluster.local"
-  staticModels: "qwen3.5-vl-9b-fp8"
-
-  serviceType: ClusterIP
-  nodePort:
-  servicePort: 80
-  containerPort: 8000
-
-  resources:
-    requests:
-      cpu: 400m
-      memory: 4Gi
-    limits:
-      memory: 4Gi
-
-  nodeSelectorTerms: []
+  nodeSelectorTerms:
+    - matchExpressions:
+      - key: node.kubernetes.io/instance-type
+        operator: In
+        values:
+          - k3s
+      - key: kubernetes.io/os
+        operator: In
+        values:
+          - linux
 
 servingEngineSpec:
   runtimeClassName: "nvidia"
@@ -32,11 +21,9 @@ servingEngineSpec:
       repository: "vllm/vllm-openai"
       tag: "v0.21.0"
 
-      replicaCount: 3
+      replicaCount: 1
       requestCPU: 4
       requestMemory: "10Gi"
-      requestGPU: 1
-      requestGPUType: "nvidia.com/mig-1g.24gb"
       env:
         - name: HF_HUB_OFFLINE
           value: "1"
@@ -57,7 +44,7 @@ servingEngineSpec:
       vllmConfig:
         host: "0.0.0.0"
         tensorParallelSize: 1
-        gpuMemoryUtilization: 0.9
+        gpuMemoryUtilization: 0.6
         enableChunkedPrefill: true
         enablePrefixCaching: true
         maxModelLen: "12K"
@@ -67,16 +54,28 @@ servingEngineSpec:
           - "qwen3.5-vl-9b-fp8"
           - "--reasoning-parser"
           - "qwen3"
+          # 6G is tuned for shared 48GB VRAM 1장인 경우에 사용 (Vision과 공유)
+          - "--kv-cache-memory-bytes"
+          - "6G"
           - "--kv-cache-dtype"
           - "fp8"
           - "--max-num-batched-tokens"
-          - "4K"
+          - "3K"
           - "--max-num-seqs"
           - "32"
           - "--disable-access-log-for-endpoints"
           - "/health,/metrics,/ping"
 
-      nodeSelectorTerms: []
+      nodeSelectorTerms:
+        - matchExpressions:
+          - key: node.kubernetes.io/instance-type
+            operator: In
+            values:
+              - k3s
+          - key: kubernetes.io/os
+            operator: In
+            values:
+              - linux
 
 sharedPvcStorage:
   mode: static

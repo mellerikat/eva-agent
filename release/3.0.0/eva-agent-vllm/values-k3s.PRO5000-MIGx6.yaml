@@ -1,9 +1,4 @@
 routerSpec:
-  staticBackends: "http://eva-agent-vllm-qwen3-vl-8b-fp8-engine-service.eva-agent.svc.cluster.local,http://external-vllm:port"
-  staticModels: "qwen3-vl-8b-instruct-fp8,Exaone4.0"
-  serviceType: ClusterIP
-  nodePort:
-
   nodeSelectorTerms:
     - matchExpressions:
       - key: node.kubernetes.io/instance-type
@@ -21,50 +16,56 @@ servingEngineSpec:
     - serviceAccountName: sa-eva-agent
       serviceType: ClusterIP
       nodePort:
-      name: "qwen3-vl-8b-fp8"
-      modelURL: "Qwen/Qwen3-VL-8B-Instruct-FP8"
+      name: "qwen35-vl-9b-fp8"
+      modelURL: "lovedheart/Qwen3.5-9B-FP8"
       repository: "vllm/vllm-openai"
       tag: "v0.21.0"
 
-      # Increase replicaCount to use multiple MIG slices; each replica requests one GPU/MIG device.
-      replicaCount: 1
+      replicaCount: 5
       requestCPU: 4
       requestMemory: "10Gi"
       requestGPU: 1
-      # MIG node: requestGPUType: "nvidia.com/mig-1g.24gb"
-      # non-MIG GPU: requestGPUType: "nvidia.com/gpu"
-      requestGPUType: "nvidia.com/mig-1g.24gb" # non-MIG: "nvidia.com/gpu"
+      requestGPUType: "nvidia.com/mig-1g.24gb"
+
+      env:
+        - name: HF_HUB_OFFLINE
+          value: "1"
+        - name: TRANSFORMERS_OFFLINE
+          value: "1"
+        - name: HF_HUB_DISABLE_TELEMETRY
+          value: "1"
+
       envFromSecret:
         name: aws-credentials
       initContainer:
         name: s3-sync
         image: amazon/aws-cli:2.33.8
-        command:
-          - sh
-          - -c
-          - aws s3 sync s3://s3-an2-mellerikat-release-eva-agent/vllm/hf /data/shared-pvc-storage
-        extraVolumeMounts:
-          - name: eva-agent-vllm-shared-pvc-storage
-            mountPath: /data/shared-pvc-storage
-        env:
-          - name: AWS_REGION
-            value: ap-northeast-2
+        awsRegion: ap-northeast-2
+
+      enableTool: true
+      toolCallParser: "qwen3_coder"
 
       vllmConfig:
         host: "0.0.0.0"
         tensorParallelSize: 1
-        gpuMemoryUtilization: 0.6
+        gpuMemoryUtilization: 0.9
         enableChunkedPrefill: true
         enablePrefixCaching: true
-        maxModelLen: 12288
+        maxModelLen: "12K"
         dtype: "auto"
         extraArgs:
           - "--served-model-name"
-          - "qwen3-vl-8b-instruct-fp8"
+          - "qwen3.5-vl-9b-fp8"
+          - "--reasoning-parser"
+          - "qwen3"
           - "--kv-cache-dtype"
-          - "auto"
+          - "fp8"
           - "--max-num-batched-tokens"
-          - "4096"
+          - "4K"
+          - "--max-num-seqs"
+          - "32"
+          - "--disable-access-log-for-endpoints"
+          - "/health,/metrics,/ping"
 
       nodeSelectorTerms:
         - matchExpressions:
@@ -79,10 +80,10 @@ servingEngineSpec:
 
 sharedPvcStorage:
   mode: static
-  size: "30Gi"
+  size: "50Gi"
   accessModes:
     - "ReadWriteMany"
   storageClass: "eva-agent-sc-fs"
   nfs:
     server: "localhost"
-    path: /data001/share/eva-agent/vllm-cache
+    path: /share/eva-agent/vllm-cache

@@ -4,7 +4,7 @@ sharedPvcStorage:
   enabled: true
   mode: static
   name: eva-agent-model-pvc-storage
-  size: 20Gi
+  size: 50Gi
   accessModes:
     - ReadWriteMany
   storageClass: eva-agent-sc-fs

@@ -1,25 +1,14 @@
 routerSpec:
-  repository: "lmcache/lmstack-router"
-  tag: "v0.1.10"
-  enableRouter: true
-  routingLogic: "roundrobin"
-  serviceDiscovery: "static"
-  staticBackends: "http://eva-agent-vllm-qwen35-vl-9b-fp8-engine-service.eva-agent.svc.cluster.local"
-  staticModels: "qwen3.5-vl-9b-fp8"
-
-  serviceType: ClusterIP
-  nodePort:
-  servicePort: 80
-  containerPort: 8000
-
-  resources:
-    requests:
-      cpu: 400m
-      memory: 4Gi
-    limits:
-      memory: 4Gi
-
-  nodeSelectorTerms: []
+  nodeSelectorTerms:
+    - matchExpressions:
+      - key: node.kubernetes.io/instance-type
+        operator: In
+        values:
+          - k3s
+      - key: kubernetes.io/os
+        operator: In
+        values:
+          - linux
 
 servingEngineSpec:
   runtimeClassName: "nvidia"
@@ -76,7 +65,16 @@ servingEngineSpec:
           - "--disable-access-log-for-endpoints"
           - "/health,/metrics,/ping"
 
-      nodeSelectorTerms: []
+      nodeSelectorTerms:
+        - matchExpressions:
+          - key: node.kubernetes.io/instance-type
+            operator: In
+            values:
+              - k3s
+          - key: kubernetes.io/os
+            operator: In
+            values:
+              - linux
 
 sharedPvcStorage:
   mode: static

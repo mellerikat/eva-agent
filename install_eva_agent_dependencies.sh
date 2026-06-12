@@ -15,7 +15,7 @@ Usage:
 
 Options:
   --namespace <ns>           Namespace (default: eva-agent)
-  --release <ver>            Release version (default: 2.6.0)
+  --release <ver>            Release version (default: 3.0.0)
   --base-dir <dir>           Base directory with values/plugin folders (default: pwd)
   --components <target>      Install target: both, qdrant, or vllm (default: both)
   --qdrant-chart-version <v> Qdrant chart version (default: 1.16.3)
@@ -39,7 +39,7 @@ USAGE
 }
 
 NS="${NS:-eva-agent}"
-RELEASE_VERSION="${RELEASE_VERSION:-2.6.0}"
+RELEASE_VERSION="${RELEASE_VERSION:-3.0.0}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 COMPONENTS="${COMPONENTS:-both}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.16.3}"

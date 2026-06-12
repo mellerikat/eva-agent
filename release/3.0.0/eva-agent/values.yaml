@@ -1,24 +1,36 @@
 image:
-  tag: "3.0.0-dev"
+  tag: "3.0.0"
 
 podSecurityContext:
   fsGroup: 10001
   fsGroupChangePolicy: OnRootMismatch
 
 persistence:
-  size: 20Gi
+  enabled: true
+  create: true
+  storageClassName: eva-agent-sc-fs
+  accessModes:
+    - ReadWriteMany
+  size: 50Gi
+  annotations:
+    helm.sh/resource-policy: keep
   s3Sync:
     enabled: true
+    image: amazon/aws-cli:2.33.8
+    awsRegion: ap-northeast-2
 
 sharedPvcStorage:
   enabled: true
-  mode: dynamic
+  mode: static
   name: eva-agent-model-pvc-storage
-  size: 20Gi
+  size: 50Gi
   accessModes:
     - ReadWriteMany
   storageClass: eva-agent-sc-fs
   reclaimPolicy: Retain
+  nfs:
+    server: "localhost"
+    path: /data001/share/eva-agent/agent-cache
 
 dockerConfig:
   enabled: false
@@ -47,17 +59,20 @@ serviceAccount:
 service:
   type: ClusterIP
   nodePort:
+  port: 80
+  targetPort: 8086
+  portName: ea-http-port
 
 replicaCount: 1
 
 env:
-  # base
+  # EVA Agent
   - name: MODEL_CATALOG_FILE
     value: config/model_catalog.json
   - name: LOGURU_LEVEL
     value: INFO
 
-  # vllm
+  # vLLM
   - name: VLLM_VLM_URL
     value: http://eva-agent-vllm-router-service/v1
   - name: VLLM_LLM_URL
@@ -65,25 +80,29 @@ env:
   - name: VLLM_ENGINE_HEALTH_MODE
     value: k8s
 
-  # qdrant
+  # Vision ML
+  - name: VISION_ML_BASE_URL
+    value: http://eva-vision.eva-vision:8000
+
+  # Qdrant
   - name: QDRANT_BASE_URL
     value: http://eva-agent-qdrant:6333
 
-  # huggingface offline
+  # Huggingface
   - name: HF_HUB_OFFLINE
     value: "1"
   - name: TRANSFORMERS_OFFLINE
     value: "1"
 
   # o11y
-  # - name: LANGFUSE_HOST
+  # - name: LANGFUSE_ENABLED
+  #   value: "true"
+  # - name: LANGFUSE_BASE_URL
   #   value: https://cloud.langfuse.com
   # - name: LANGFUSE_MEDIA_UPLOAD_ENABLED
   #   value: "true"
-  # - name: OTEL_EXPORTER_OTLP_ENDPOINT
-  #   value: https://cloud.langfuse.com/api/public/otel
   # - name: LANGFUSE_RETENTION_ENABLED
-  #   value: "true"
+  #   value: "false"
   # - name: LANGFUSE_RETENTION_DAYS
   #   value: "30"
   # - name: LANGFUSE_RETENTION_TIMEZONE
@@ -93,7 +112,7 @@ env:
   # - name: LANGFUSE_MEDIA_RETENTION_ENABLED
   #   value: "true"
   # - name: LANGFUSE_MEDIA_S3_ENDPOINT_URL
-  #   value: http://10.157.76.183:9090
+  #   value: http://s3.url:9090
   # - name: LANGFUSE_MEDIA_S3_BUCKET
   #   value: langfuse
   # - name: LANGFUSE_MEDIA_S3_PREFIX
@@ -126,6 +145,18 @@ env:
 
 nodeSelector: {}
 
+# vLLM engine health check는 eva-agent 내부의 Python Kubernetes SDK를 사용함
+# Kubernetes는 configured ServiceAccount token을 pod에 자동 mount함
+# 이 option은 해당 ServiceAccount가 Pod를 읽을 수 있는 RBAC만 생성함
+# runtime image에는 kubectl binary나 kubeconfig file이 필요하지 않음
 vllmEngineHealth:
   rbac:
     create: true
+
+resources:
+  limits:
+    # cpu: 100m
+    memory: 10Gi
+  requests:
+    # cpu: 100m
+    memory: 10Gi
