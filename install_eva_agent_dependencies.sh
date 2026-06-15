@@ -15,15 +15,16 @@ Usage:
 
 Options:
   --namespace <ns>           Namespace (default: eva-agent)
-  --release <ver>            Release version (default: 3.0.0)
+  --release <ver>            Release version (default: 3.0.1)
   --base-dir <dir>           Base directory with values/plugin folders (default: pwd)
   --components <target>      Install target: both, qdrant, or vllm (default: both)
   --qdrant-chart-version <v> Qdrant chart version (default: 1.16.3)
-  --vllm-chart-version <v>   vLLM chart version (default: 0.1.10)
+  --vllm-chart-version <v>   vLLM chart version (default: 3.0.1)
   --qdrant-values <file>     Extra values file for Qdrant (repeatable)
   --vllm-values <file>       Extra values file for vLLM (repeatable)
   --aws-credential <profile> AWS CLI profile name to seed aws-credentials Secret
   --aws-secret-name <name>   Secret name for AWS creds (default: aws-credentials)
+  --force-conflicts <0|1>    Force Helm to replace drifted resources on upgrade (default: 0)
   -h, --help                 Show help
 
 Expected layout under base-dir:
@@ -39,13 +40,14 @@ USAGE
 }
 
 NS="${NS:-eva-agent}"
-RELEASE_VERSION="${RELEASE_VERSION:-3.0.0}"
+RELEASE_VERSION="${RELEASE_VERSION:-3.0.1}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 COMPONENTS="${COMPONENTS:-both}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.16.3}"
-VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-0.1.10}"
+VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-3.0.1}"
 AWS_PROFILE_NAME="${AWS_PROFILE_NAME:-}"
 AWS_SECRET_NAME="${AWS_SECRET_NAME:-aws-credentials}"
+FORCE_CONFLICTS="${FORCE_CONFLICTS:-0}"
 
 QDRANT_VALUES_EXTRA=()
 VLLM_VALUES_EXTRA=()
@@ -62,6 +64,7 @@ while [ "${1:-}" != "" ]; do
     --vllm-values) VLLM_VALUES_EXTRA+=("$2"); shift 2 ;;
     --aws-credential) AWS_PROFILE_NAME="$2"; shift 2 ;;
     --aws-secret-name) AWS_SECRET_NAME="$2"; shift 2 ;;
+    --force-conflicts) FORCE_CONFLICTS="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "[ERROR] Unknown option: $1" >&2; usage; exit 1 ;;
   esac
@@ -82,6 +85,15 @@ case "${COMPONENTS}" in
     ;;
   *)
     echo "[ERROR] Invalid value for --components: ${COMPONENTS}. Expected one of: both, qdrant, vllm" >&2
+    usage
+    exit 1
+    ;;
+esac
+
+case "$FORCE_CONFLICTS" in
+  0|1) ;;
+  *)
+    echo "[ERROR] Invalid value for --force-conflicts: ${FORCE_CONFLICTS}. Expected 0 or 1." >&2
     usage
     exit 1
     ;;
@@ -126,6 +138,14 @@ if [ -z "$HELM_MAJOR" ]; then
 fi
 
 qdrant_post_renderer=""
+helm_upgrade_args=()
+if [ "$FORCE_CONFLICTS" = "1" ]; then
+  if [ "$HELM_MAJOR" -ge 4 ]; then
+    helm_upgrade_args+=(--force-conflicts)
+  else
+    helm_upgrade_args+=(--force)
+  fi
+fi
 
 if [ "${INSTALL_QDRANT}" = true ]; then
   if [ "$HELM_MAJOR" -ge 4 ]; then
@@ -169,6 +189,7 @@ fi
 echo "[INFO] Namespace: ${NS}"
 echo "[INFO] Release: ${RELEASE_VERSION} (script supports >= 2.5.0 layout)"
 echo "[INFO] Components: ${COMPONENTS}"
+echo "[INFO] Force Conflicts: ${FORCE_CONFLICTS}"
 if [ -n "${AWS_PROFILE_NAME}" ]; then
   AWS_ACCESS_KEY_ID="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_access_key_id)"
   AWS_SECRET_ACCESS_KEY="$(aws --profile "${AWS_PROFILE_NAME}" configure get aws_secret_access_key)"
@@ -196,6 +217,7 @@ if [ "${INSTALL_QDRANT}" = true ]; then
     --version="${QDRANT_CHART_VERSION}" \
     -n "${NS}" \
     "${qdrant_values_args[@]}" \
+    "${helm_upgrade_args[@]}" \
     --post-renderer "${qdrant_post_renderer}"
 fi
 
@@ -203,5 +225,6 @@ if [ "${INSTALL_VLLM}" = true ]; then
   helm upgrade --install eva-agent-vllm eva-agent/eva-agent-vllm \
     --version="${VLLM_CHART_VERSION}" \
     -n "${NS}" \
-    "${vllm_values_args[@]}"
+    "${vllm_values_args[@]}" \
+    "${helm_upgrade_args[@]}"
 fi
