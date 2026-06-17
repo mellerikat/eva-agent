@@ -3,9 +3,9 @@ entries:
   eva-agent:
   - apiVersion: v2
     appVersion: 3.0.1
-    created: "2026-06-15T09:20:34.05598373Z"
+    created: "2026-06-17T02:24:21.851284008Z"
     description: eva-agent service
-    digest: 14f7a5c063223c7fb291591a42839e83b26566032978d52656a49d55fb784d28
+    digest: 66b148bf172c7758c3cff7977ee92b337f18aa3b582c81a711f22dc91c325cc9
     icon: https://github.com/mellerikat.png
     name: eva-agent
     type: application
@@ -100,9 +100,9 @@ entries:
     version: 1.0.0
   eva-agent-vllm:
   - apiVersion: v2
-    created: "2026-06-15T09:20:34.063919021Z"
+    created: "2026-06-17T02:24:21.864630875Z"
     description: The stack deployment of vLLM
-    digest: 54f7ac1d35c7c35e4fb123ab213986e998ea883a7855de11b88740ad97de7246
+    digest: dce6e33a5b3882f531591f7d13bfb4f47ebc7f0eabca12014da9b98edfc8d841
     maintainers:
     - name: apostac
     name: eva-agent-vllm
@@ -132,4 +132,4 @@ entries:
     urls:
     - https://mellerikat.github.io/eva-agent/eva-agent-vllm-0.1.8.tgz
     version: 0.1.8
-generated: "2026-06-15T09:20:34.046602508Z"
+generated: "2026-06-17T02:24:21.834724681Z"
