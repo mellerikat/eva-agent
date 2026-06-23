@@ -1,0 +1,30 @@
+replicaCount: 1
+
+sharedPvcStorage:
+  enabled: true
+  mode: static
+  name: eva-agent-model-pvc-storage
+  size: 50Gi
+  accessModes:
+    - ReadWriteMany
+  storageClass: eva-agent-sc-fs
+  reclaimPolicy: Retain
+  nfs:
+    server: "localhost"
+    path: /data001/share/eva-agent/agent-cache
+
+resources:
+  limits:
+    # cpu: 100m
+    memory: 10Gi
+  requests:
+    # cpu: 100m
+    memory: 3Gi
+
+nodeSelector:
+  node.kubernetes.io/instance-type: k3s
+  kubernetes.io/os: linux
+
+service:
+  type: ClusterIP
+  nodePort:
