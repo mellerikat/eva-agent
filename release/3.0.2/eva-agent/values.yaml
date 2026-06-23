@@ -1,9 +1,5 @@
 image:
-  tag: "3.0.0"
-
-podSecurityContext:
-  fsGroup: 10001
-  fsGroupChangePolicy: OnRootMismatch
+  tag: "3.0.2"
 
 persistence:
   enabled: true
@@ -30,7 +26,7 @@ sharedPvcStorage:
   reclaimPolicy: Retain
   nfs:
     server: "localhost"
-    path: /data001/share/eva-agent/agent-cache
+    path: /share/eva-agent/agent-cache
 
 dockerConfig:
   enabled: false

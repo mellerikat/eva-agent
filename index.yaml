@@ -111,6 +111,17 @@ entries:
     version: 1.0.0
   eva-agent-vllm:
   - apiVersion: v2
+    created: "2026-06-23T10:19:23.138799179Z"
+    description: The stack deployment of vLLM
+    digest: 4b31969e83d9224f265697623202b2d6082456a3788a8f4f8e1ac2222fd52bb7
+    maintainers:
+    - name: apostac
+    name: eva-agent-vllm
+    type: application
+    urls:
+    - https://mellerikat.github.io/eva-agent/eva-agent-vllm-3.0.2.tgz
+    version: 3.0.2
+  - apiVersion: v2
     created: "2026-06-19T07:29:06.448130378Z"
     description: The stack deployment of vLLM
     digest: dce6e33a5b3882f531591f7d13bfb4f47ebc7f0eabca12014da9b98edfc8d841
@@ -143,4 +154,4 @@ entries:
     urls:
     - https://mellerikat.github.io/eva-agent/eva-agent-vllm-0.1.8.tgz
     version: 0.1.8
-generated: "2026-06-19T07:29:06.420455534Z"
+generated: "2026-06-23T10:19:23.114030023Z"

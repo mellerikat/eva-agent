@@ -11,7 +11,7 @@ sharedPvcStorage:
   reclaimPolicy: Retain
   nfs:
     server: "localhost"
-    path: /data001/share/eva-agent/agent-cache
+    path: /share/eva-agent/agent-cache
 
 resources:
   limits:
