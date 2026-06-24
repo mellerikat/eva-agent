@@ -28,8 +28,8 @@ Options:
   -h, --help                 Show help
 
 Expected layout under base-dir:
-  ./eva-agent-qdrant/values.yaml
-  ./eva-agent-vllm/values.yaml
+  ./eva-agent-qdrant/values-*.yaml (optional standalone provider values)
+  ./eva-agent-vllm/values-*.yaml (optional standalone provider values)
   ./plugin/eva-agent-qdrant/{plugin.yaml,post-renderer.sh}
 
 Examples:
@@ -122,13 +122,6 @@ require_file() {
   fi
 }
 
-if [ "${INSTALL_QDRANT}" = true ]; then
-  require_file "${QDRANT_DIR}/values.yaml"
-fi
-if [ "${INSTALL_VLLM}" = true ]; then
-  require_file "${VLLM_DIR}/values.yaml"
-fi
-
 HELM_VERSION_RAW="$(helm version --short 2>/dev/null || true)"
 HELM_VERSION_RAW="${HELM_VERSION_RAW#v}"
 HELM_MAJOR="${HELM_VERSION_RAW%%.*}"
@@ -172,7 +165,6 @@ fi
 
 qdrant_values_args=()
 if [ "${INSTALL_QDRANT}" = true ]; then
-  qdrant_values_args=(-f "${QDRANT_DIR}/values.yaml")
   for values_path in "${QDRANT_VALUES_EXTRA[@]}"; do
     qdrant_values_args+=(-f "$values_path")
   done
@@ -180,7 +172,6 @@ fi
 
 vllm_values_args=()
 if [ "${INSTALL_VLLM}" = true ]; then
-  vllm_values_args=(-f "${VLLM_DIR}/values.yaml")
   for values_path in "${VLLM_VALUES_EXTRA[@]}"; do
     vllm_values_args+=(-f "$values_path")
   done

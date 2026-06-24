@@ -1,14 +1,9 @@
-routerSpec:
-  nodeSelectorTerms: []
-
 servingEngineSpec:
-  runtimeClassName: "nvidia"
+  runtimeClassName: ""
   strategy:
     type: Recreate
   modelSpec:
     - serviceAccountName: sa-eva-agent
-      serviceType: ClusterIP
-      nodePort:
       name: "qwen35-vl-9b-fp8"
       modelURL: "lovedheart/Qwen3.5-9B-FP8"
       repository: "vllm/vllm-openai"
@@ -17,6 +12,8 @@ servingEngineSpec:
       replicaCount: 1
       requestCPU: 4
       requestMemory: "10Gi"
+      # requestGPU: 1
+      requestGPUType: "nvidia.com/gpu"
 
       env:
         - name: HF_HUB_OFFLINE
@@ -60,9 +57,6 @@ servingEngineSpec:
           - "32"
           - "--disable-access-log-for-endpoints"
           - "/health,/metrics,/ping"
-
-      nodeSelectorTerms: []
-
 sharedPvcStorage:
   mode: dynamic
   size: "50Gi"

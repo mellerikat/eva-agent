@@ -19,7 +19,7 @@ Usage:
 Options:
   --chart <chart>                   Helm chart reference (default: eva-agent/eva-agent)
   --chart-version <ver>             Helm chart version (default: 3.0.2)
-  --image <tag>                     Image tag (defaults to values.yaml image.tag)
+  --image <tag>                     Image tag (defaults to image.tag in provided values files)
   --namespace <ns>                  Namespace (default: eva-agent)
   --context <ctx>                   Kube context (default: current context)
   --base-dir <dir>                  Base directory with eva-agent values (default: pwd)
@@ -34,14 +34,14 @@ Options:
   -h, --help                        Show help
 
 Expected layout under base-dir:
-  ./eva-agent/values.yaml
-  ./eva-agent/values-secret.yaml
-  ./eva-agent/values-k3s.yaml (optional)
-  ./eva-agent/values-aws.yaml (optional)
+  ./eva-agent/values-secret.yaml (optional, auto-included when present)
+  ./eva-agent/values-k3s.yaml (optional standalone provider values)
+  ./eva-agent/values-aws.yaml (optional standalone provider values)
+  ./eva-agent/values-ncp.yaml (optional standalone provider values)
 
 Examples:
-  ./install_eva_agent.sh --image 3.0.2
-  ./install_eva_agent.sh --chart eva-agent/eva-agent --chart-version 3.0.2
+  ./install_eva_agent.sh -f eva-agent/values-k3s.yaml
+  ./install_eva_agent.sh --chart eva-agent/eva-agent --chart-version 3.0.2 -f eva-agent/values-aws.yaml
 USAGE
 }
 
@@ -133,19 +133,26 @@ if [ -n "$KUBE_CONTEXT" ]; then
   echo "[INFO] Kube Context: ${KUBE_CONTEXT}"
 fi
 
-# Resolve IMAGE_TAG from values.yaml when not provided.
-if [ -z "$IMAGE_TAG" ] && [ -f "${VALUES_DIR}/values.yaml" ]; then
-  IMAGE_TAG="$(awk '
-    $1 == "image:" {in_image=1; next}
-    in_image && $1 == "tag:" {gsub(/"/, "", $2); print $2; exit}
-    in_image && $1 ~ /^[A-Za-z_]/ {in_image=0}
-  ' "${VALUES_DIR}/values.yaml")"
+# Resolve IMAGE_TAG from provided values files when not provided.
+if [ -z "$IMAGE_TAG" ]; then
+  for values_path in "${EXTRA_VALUES[@]}"; do
+    if [ -f "$values_path" ]; then
+      tag_from_values="$(awk '
+        $1 == "image:" {in_image=1; next}
+        in_image && $1 == "tag:" {gsub(/"/, "", $2); print $2; exit}
+        in_image && $1 ~ /^[A-Za-z_]/ {in_image=0}
+      ' "$values_path")"
+      if [ -n "$tag_from_values" ]; then
+        IMAGE_TAG="$tag_from_values"
+      fi
+    fi
+  done
 fi
 
 if [ -n "$IMAGE_TAG" ]; then
   echo "[INFO] Image Tag: ${IMAGE_TAG}"
 else
-  echo "[WARN] IMAGE_TAG not set and no tag found in values.yaml."
+  echo "[INFO] IMAGE_TAG not set; Helm chart/default values will be used."
 fi
 
 # Resolve chart version from Helm metadata when not provided.
@@ -206,19 +213,17 @@ if [ -n "$prev_image" ] && [ "${prev_image#*@}" = "$prev_image" ]; then
   prev_tag="${prev_image##*:}"
 fi
 
-# Include default values only if files exist; append user values after.
-default_values_args=()
-for values_path in "${VALUES_DIR}/values.yaml" "${VALUES_DIR}/values-secret.yaml"; do
-  if [ -f "$values_path" ]; then
-    default_values_args+=(-f "$values_path")
-  else
-    echo "[INFO] values file not found: ${values_path} (skip)"
-  fi
-done
 extra_values_args=()
 for values_path in "${EXTRA_VALUES[@]}"; do
   extra_values_args+=(-f "$values_path")
 done
+secret_values_args=()
+secret_values_path="${VALUES_DIR}/values-secret.yaml"
+if [ -f "$secret_values_path" ]; then
+  secret_values_args=(-f "$secret_values_path")
+else
+  echo "[INFO] values file not found: ${secret_values_path} (skip)"
+fi
 
 helm_upgrade_args=()
 if [ "$FORCE_CONFLICTS" = "1" ]; then
@@ -232,8 +237,8 @@ fi
 echo "[INFO] Running helm upgrade..."
 helm upgrade --install eva-agent "$CHART" --version="$CHART_VERSION" -n "$NS" \
   "${HELM_CONTEXT_ARGS[@]}" \
-  "${default_values_args[@]}" \
   "${extra_values_args[@]}" \
+  "${secret_values_args[@]}" \
   "${helm_upgrade_args[@]}" \
   ${IMAGE_TAG:+--set image.tag="$IMAGE_TAG"}
 

@@ -12,10 +12,10 @@ routerSpec:
 
 servingEngineSpec:
   runtimeClassName: "nvidia"
+  strategy:
+    type: Recreate
   modelSpec:
     - serviceAccountName: sa-eva-agent
-      serviceType: ClusterIP
-      nodePort:
       name: "qwen35-vl-9b-fp8"
       modelURL: "lovedheart/Qwen3.5-9B-FP8"
       repository: "vllm/vllm-openai"

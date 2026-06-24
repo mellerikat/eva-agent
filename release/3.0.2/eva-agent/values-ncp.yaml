@@ -1,8 +1,2 @@
-nodeSelector: {}
-
-service:
-  type: ClusterIP
-  nodePort:
-
 sharedPvcStorage:
   mode: dynamic
