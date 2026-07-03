@@ -1,0 +1,25 @@
+nameOverride: "eva-agent-qdrant"
+serviceAccount:
+  create: false
+  name: sa-eva-agent
+
+image:
+  pullPolicy: Always
+
+# Storage PVC config
+persistence:
+  storageVolumeName: eva-agent-qdrant-storage
+  storageClassName: eva-agent-sc-bs
+
+# Snapshot PVC config (backup point)
+snapshotPersistence:
+  enabled: true
+  snapshotsVolumeName: eva-agent-qdrant-snapshots
+  storageClassName: eva-agent-sc-bs
+
+# Optional advanced external PVC source for runtime API recovery.
+# snapshotRestoration:
+#   enabled: false
+#   pvcName: qdrant-snapshot-restore-pvc
+#   mountPath: /qdrant/snapshot-restoration
+#   snapshots: []

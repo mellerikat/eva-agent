@@ -15,11 +15,11 @@ Usage:
 
 Options:
   --namespace <ns>           Namespace (default: eva-agent)
-  --release <ver>            Release version (default: 3.0.3)
+  --release <ver>            Release version (default: 3.0.4)
   --base-dir <dir>           Base directory with values/plugin folders (default: pwd)
   --components <target>      Install target: both, qdrant, or vllm (default: both)
   --qdrant-chart-version <v> Qdrant chart version (default: 1.16.3)
-  --vllm-chart-version <v>   vLLM chart version (default: 3.0.3)
+  --vllm-chart-version <v>   vLLM chart version (default: 3.0.4)
   --qdrant-values <file>     Extra values file for Qdrant (repeatable)
   --vllm-values <file>       Extra values file for vLLM (repeatable)
   --aws-credential <profile> AWS CLI profile name to seed aws-credentials Secret
@@ -40,11 +40,11 @@ USAGE
 }
 
 NS="${NS:-eva-agent}"
-RELEASE_VERSION="${RELEASE_VERSION:-3.0.3}"
+RELEASE_VERSION="${RELEASE_VERSION:-3.0.4}"
 BASE_DIR="${BASE_DIR:-$(pwd)}"
 COMPONENTS="${COMPONENTS:-both}"
 QDRANT_CHART_VERSION="${QDRANT_CHART_VERSION:-1.16.3}"
-VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-3.0.3}"
+VLLM_CHART_VERSION="${VLLM_CHART_VERSION:-3.0.4}"
 AWS_PROFILE_NAME="${AWS_PROFILE_NAME:-}"
 AWS_SECRET_NAME="${AWS_SECRET_NAME:-aws-credentials}"
 FORCE_CONFLICTS="${FORCE_CONFLICTS:-0}"
