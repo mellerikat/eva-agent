@@ -2,4 +2,4 @@
 **/.env*
 **/.secret-values*
 **/.values*
-**/tmp
+**/tmp*
