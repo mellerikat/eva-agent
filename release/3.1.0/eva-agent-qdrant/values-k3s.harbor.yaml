@@ -1,18 +1,21 @@
 nameOverride: "eva-agent-qdrant"
 
-# Air-gapped k3s profile.  Qdrant and the snapshot sync sidecar are served by
-# the Harbor registry on the deployment network.  eva-deployer replaces the
-# Qdrant image with <repository_registry>/<repository_project>/qdrant.
+# Air-gapped k3s profile. eva-deployer resolves these deployment-specific
+# placeholders:
+#   <harbor_registry>  repository_registry (host[:port])
+#   <harbor_project>   repository_project
+# Passwords never belong in this values file. qdrant-snapshot-harbor is a
+# Qdrant-specific Kubernetes Secret created by eva-deployer before Helm runs.
 imagePullSecrets: []
 
 image:
-  repository: <harbor_base_url>/eva/qdrant/qdrant
+  repository: <harbor_registry>/<harbor_project>/qdrant
   pullPolicy: IfNotPresent
   tag: v1.18.2
 
 chartTests:
   dbInteraction:
-    image: <harbor_base_url>/eva/bci/bci-base:latest
+    image: <harbor_registry>/<harbor_project>/bci-base:latest
 
 service:
   type: NodePort
@@ -41,7 +44,7 @@ nodeSelector:
 # artifactTag; the sidecar pulls it with ORAS before restoring the collection.
 sidecarContainers:
   - name: qdrant-snapshot-sync
-    image: <harbor_base_url>/eva/eva-agent-qdrant-snapshot-sync:0.1.0
+    image: <harbor_registry>/<harbor_project>/eva-agent-qdrant-snapshot-sync:0.1.0
     imagePullPolicy: IfNotPresent
     command:
       - /bin/bash
@@ -156,12 +159,12 @@ sidecarContainers:
         touch "${ready_file}"
         exec sleep infinity
     env:
-      # Use a node-reachable hostname/IP here for multi-node clusters.  For the
-      # single-node Local Harbor deployment this remains localhost:32080.
+      # This must be reachable from the Qdrant Pod. Do not use localhost:32080
+      # for a multi-node cluster unless every node has that Harbor endpoint.
       - name: HARBOR_REGISTRY
-        value: localhost:32080
+        value: <harbor_registry>
       - name: HARBOR_PROJECT
-        value: eva
+        value: <harbor_project>
       - name: HARBOR_USERNAME
         valueFrom:
           secretKeyRef:
